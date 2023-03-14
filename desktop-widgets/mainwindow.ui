@@ -84,6 +84,11 @@
     <addaction name="separator"/>
     <addaction name="actionFilterTags"/>
    </widget>
+   <widget class="ActionsMenu" name="menuActions" native="true">
+    <property name="title">
+     <string>&amp;Actions</string>
+    </property>
+   </widget>
    <widget class="QMenu" name="menuView">
     <property name="title">
      <string>&amp;View</string>
@@ -128,6 +133,7 @@
    <addaction name="menu_Edit"/>
    <addaction name="menuImport"/>
    <addaction name="menuLog"/>
+   <addaction name="menuActions"/>
    <addaction name="menuView"/>
    <addaction name="menuHelp"/>
   </widget>
@@ -510,6 +516,12 @@
    <class>NotificationWidget</class>
    <extends>QWidget</extends>
    <header>desktop-widgets/notificationwidget.h</header>
+   <container>1</container>
+  </customwidget>
+  <customwidget>
+   <class>ActionsMenu</class>
+   <extends>QMenu</extends>
+   <header>desktop-widgets/actionsmenu.h</header>
    <container>1</container>
   </customwidget>
  </customwidgets>

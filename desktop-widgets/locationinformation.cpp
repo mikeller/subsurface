@@ -15,6 +15,7 @@
 #include "core/taxonomy.h"
 #include "core/settings/qPrefUnit.h"
 #include "commands/command.h"
+#include "desktop-widgets/actionsmenu.h"
 
 #include <QShowEvent>
 #include <QItemSelectionModel>
@@ -43,6 +44,10 @@ LocationInformationWidget::LocationInformationWidget(QWidget *parent) : QGroupBo
 	connect(&diveListNotifier, &DiveListNotifier::diveSiteChanged, this, &LocationInformationWidget::diveSiteChanged);
 	connect(&diveListNotifier, &DiveListNotifier::diveSiteDeleted, this, &LocationInformationWidget::diveSiteDeleted);
 	connect(qPrefUnits::instance(), &qPrefUnits::unit_systemChanged, this, &LocationInformationWidget::unitsChanged);
+
+	QAction *mergeAction = new QAction(tr("Merge into current site"));
+	connect(mergeAction, &QAction::triggered, this, &LocationInformationWidget::mergeSelectedDiveSites);
+	//emit ActionsMenu::addToActions(mergeAction);
 
 	ui.diveSiteListView->setModel(&filter_model);
 	ui.diveSiteListView->setModelColumn(LocationInformationModel::NAME);

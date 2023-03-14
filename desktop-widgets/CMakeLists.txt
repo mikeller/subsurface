@@ -20,6 +20,7 @@ add_subdirectory(preferences)
 
 set (SUBSURFACE_UI
 	about.ui
+	actionsmenu.ui
 	addfilterpreset.ui
 	btdeviceselectiondialog.ui
 	configuredivecomputerdialog.ui
@@ -64,6 +65,8 @@ set (SUBSURFACE_UI
 set(SUBSURFACE_INTERFACE
 	about.cpp
 	about.h
+	actionsmenu.cpp
+	actionsmenu.h
 	configuredivecomputerdialog.cpp
 	configuredivecomputerdialog.h
 	divelistview.cpp
