@@ -614,6 +614,7 @@ TemplatePage {
 					checked: PrefTechnicalDetails.dcceiling
 					onClicked: {
 						PrefTechnicalDetails.dcceiling = checked
+
 						rootItem.settingsChanged()
 					}
 				}
@@ -624,6 +625,7 @@ TemplatePage {
 					checked: PrefTechnicalDetails.calcceiling
 					onClicked: {
 						PrefTechnicalDetails.calcceiling = checked
+
 						rootItem.settingsChanged()
 					}
 				}
@@ -640,7 +642,8 @@ TemplatePage {
 						return value + "%"
 					}
 					onValueModified: {
-						PrefTechnicalDetails.gflow = gfLow.text
+						PrefTechnicalDetails.gflow = parseInt(gfLow.text, 10)
+
 						rootItem.settingsChanged()
 					}
 				}
@@ -657,7 +660,8 @@ TemplatePage {
 						return value + "%"
 					}
 					onValueModified: {
-						PrefTechnicalDetails.gfhigh = gfHigh.text
+						PrefTechnicalDetails.gfhigh = parseInt(gfHigh.text, 10)
+
 						rootItem.settingsChanged()
 					}
 				}
