@@ -1339,8 +1339,11 @@ static bool isCsvFile(const QString &s)
 
 void MainWindow::on_actionImportDiveLog_triggered()
 {
-	QStringList fileNames = QFileDialog::getOpenFileNames(this, tr("Open dive log file"), lastUsedDir(), filter_import());
-
+	QFileDialog dialog(this, tr("Open dive log file"), lastUsedDir(), filter_import());
+	dialog.setOption(QFileDialog::DontUseNativeDialog, true);
+	QStringList fileNames;
+	if (dialog.exec())
+		fileNames = dialog.selectedFiles();
 	if (fileNames.isEmpty())
 		return;
 	updateLastUsedDir(QFileInfo(fileNames[0]).dir().path());
