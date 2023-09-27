@@ -39,9 +39,9 @@ jobs:
     - name: run coverity scan
       uses: vapier/coverity-scan-action@v1
       with:
-        project: Subsurface-divelog/subsurface
+        project: mikeller/subsurface
         token: ${{ secrets.COVERITY_SCAN_TOKEN }}
-        email: glance@acc.umu.se
+        email: subsurface@ike.ch
         command: subsurface/scripts/build.sh -desktop -build-with-webkit
         working-directory: ${{ github.workspace }}/..
         version: $(/scripts/get-version linux)
