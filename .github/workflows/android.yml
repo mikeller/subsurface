@@ -1,7 +1,6 @@
 name: Android Qt 6
 
 on:
-  workflow_dispatch:
   push:
     paths-ignore:
     - scripts/docker/**
