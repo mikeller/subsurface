@@ -74,7 +74,7 @@ ADD settings.mk .
 ADD qtconnectivity-1.patch src/
 
 ADD mdbtools_version.patch .
-RUN patch -p1 < mdbtools_version.patch 2>&1 | tee mxe-patch.log
+#RUN patch -p1 < mdbtools_version.patch 2>&1 | tee mxe-patch.log
 
 # separate download from build so that we can redo the build
 RUN make -j download 2>&1 | tee mxe-build.log
