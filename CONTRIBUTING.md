@@ -108,7 +108,7 @@ Here is a (non exhaustive) list of Areas that can be used:
 
 In order to make reviews simpler and have contributions merged faster in the code base, please follow Subsurface project's coding style and coding conventions described in the [CodingStyle][11] file.
 
-[1]: http://lists.subsurface-divelog.org/cgi-bin/mailman/listinfo/subsurface
+[1]: https://lists.subsurface-divelog.org/cgi-bin/mailman/listinfo/subsurface
 [2]: https://github.com/subsurface/subsurface
 [3]: https://groups.google.com/g/subsurface-divelog
 [4]: https://www.transifex.com/

@@ -10,7 +10,7 @@
 :toc-placement: manual
 :numbered:
 :ascii-ids:
-// :website: https://subsurface-divelog.org
+// :website: https://subsurface-divelog.org/
 
 image::images/Subsurface4Banner.jpg["Banner",align="center"]
 
@@ -324,7 +324,7 @@ _Subsurface_ puede capturar esta información y presentarla como parte de la
 información de la inmersión. _Subsurface_ puede obtener información de un amplio
 abanico de ordenadores de buceo, la última lista de los cuales puede encontrarse
 en:
-link:http://subsurface-divelog.org/documentation/supported-dive-computers/[Ordenadores de buceo soportados.]
+link:https://subsurface-divelog.org/documentation/supported-dive-computers/[Ordenadores de buceo soportados.]
 
 [icon="images/icons/warning2.png"]
 [WARNING]
@@ -2697,11 +2697,11 @@ N.B. Los facatores indicados *NO* son los utilizados por el ordenador de buceo
 para calcular las obligaciones descompresivas durante el buceo. Para más
 información externa a este manual ver:
 
-*** http://www.tek-dive.com/portal/upload/M-Values.pdf[Understanding M-values
+*** https://www.tek-dive.com/portal/upload/M-Values.pdf[Understanding M-values
 de Erik Baker, _Immersed_ Vol. 3, No. 3.]
 
 ***
-link:http://www.rebreatherworld.com/general-and-new-to-rebreather-articles/503 7-gradient-factors-for-dummies.html[Gradient factors for dummies, de Kevin Watts]
+link:https://www.rebreatherworld.com/general-and-new-to-rebreather-articles/503 7-gradient-factors-for-dummies.html[Gradient factors for dummies, de Kevin Watts]
 ==========================================================================================================
 
 
@@ -2801,7 +2801,7 @@ Factores de Gradiente. Esto se debe a que el mapa indica presiones de tejidos
 relativas al gradiente del Valor-M de Bühlmann, y no relativas a ningún Factor
 de Gradiente especifico. Para más información externa a este manual ver:
 
-http://www.tek-dive.com/portal/upload/M-Values.pdf[Understanding M-values by Erik Baker, _Immersed_ Vol. 3, No. 3.]
+https://www.tek-dive.com/portal/upload/M-Values.pdf[Understanding M-values by Erik Baker, _Immersed_ Vol. 3, No. 3.]
 
 Al no verse afectados los colores del mapa de calor por los factores de
 gradiente, el mapa también es aplicable cuando se utilice el modelo de
@@ -3151,16 +3151,16 @@ Un registro de buceo puede guardarse en tres formatos:
 * Formato XML de _Subsurface_. Es el formato usado nativamente por _Subsurface_.
 
 
-* Universal Dive Data format (UDDF). Ver http://uddf.org para más información.
+* Universal Dive Data format (UDDF). Ver https://uddf.org para más información.
   UDDF es un formato genérico que permite la comunicación entre muchos ordenadores
   de buceo y programas de de ordenador.
 * _Divelogs.de_, un registro de inmersiones basado en internet. Para enviar
   buceos a _Divelogs.de_, se necesita un usuario y una password de _Divelogs.de_.
-  Hay que registrarse en _http://es.divelogs.de_ y suscribir el servicio para
+  Hay que registrarse en _https://es.divelogs.de_ y suscribir el servicio para
   poder enviar datos de inmersiones desde _Subsurface_.
 * _DiveShare_ es también un repositorio de inmersiones basado en internet que se
   dirige a inmersiones recreativas. Para subir inmersiones se necesita una
-  identificación de usuario, por lo que es necesario registrase en _http://scubadiveshare.com_.
+  identificación de usuario, por lo que es necesario registrase en _https://scubadiveshare.com_.
 * _Detalles de inmersión CSV_, que incluye la información más crítica del perfil de la
   inmersión. La información que se incluye es número, fecha, hora, duración,
   profundidad, temperatura y presión. En resumen, la mayoría de la información
@@ -3202,7 +3202,7 @@ image::images/mapview_f20.jpg["Figura: Vista de exportación en formato Mapamund
 * Formato _TeX_, un archivo para imprimir usando el software tipográfico TeX.
   Elige un nombre de archivo con extensión '.tex'. También necesitarás un
   archivo de plantilla en la misma carpeta que el .tex que puede obtenerse de
-  link:http://www.atdotde.de/%7erobert/subsurfacetemplate/[http://www.atdotde.de/~robert/subsurfacetemplate/].
+  link:https://www.atdotde.de/%7erobert/subsurfacetemplate/[https://www.atdotde.de/~robert/subsurfacetemplate/].
   El archivo puede procesarse, entonces, con TeX (no LaTeX), por ejemplo con
   el comando '$ pdftex filename.tex'.
 
@@ -3314,7 +3314,7 @@ Si se prefiere no usar el almacenamiento en la nube integrado (y no se necesita
 tener acceso vía web a los datos), también resulta muy fácil guardar los
 divelogs en la nube usando uno de los servicios disponibles en internet.
 
-Por ejemplo http://www.dropbox.com/[_Dropbox_] ofrece una aplicación gratuita
+Por ejemplo https://www.dropbox.com/[_Dropbox_] ofrece una aplicación gratuita
 que permite que se vean como locales en nuestro ordenador los archivos guardados
 en sus servidores.
 
@@ -3665,9 +3665,9 @@ los techos. Factores de gradiente de 20/60 se consideran conservativos y de
 70/90 se consideran arriesgados.
 Para más información visita
 
-*** http://www.tek-dive.com/portal/upload/M-Values.pdf[Understanding M-values by Erik Baker, _Immersed_ Vol. 3, No. 3.]
+*** https://www.tek-dive.com/portal/upload/M-Values.pdf[Understanding M-values by Erik Baker, _Immersed_ Vol. 3, No. 3.]
 
-*** http://www.rebreatherworld.com/general-and-new-to-rebreather-articles/5037-gradient-factors-for-dummies.html[Gradient factors for dummies, by Kevin Watts]
+*** https://www.rebreatherworld.com/general-and-new-to-rebreather-articles/5037-gradient-factors-for-dummies.html[Gradient factors for dummies, by Kevin Watts]
 
 * *Miscelanea*
 
@@ -4004,9 +4004,9 @@ primer punto de la fase de ascenso, en la tabla del lado izquierdo.
 
 Para más información externa a este manual ver:
 
- * link:http://www.tek-dive.com/portal/upload/M-Values.pdf[Understanding M-values by Erik Baker, _Immersed_ Vol. 3, No. 3.]
- * link:http://www.rebreatherworld.com/general-and-new-to-rebreather-articles/5037-gradient-factors-for-dummies.html[Gradient factors for dummies, por Kevin Watts]
- * link:http://www.amazon.com/Deco-Divers-Decompression-Theory-Physiology/dp/1905492073/ref=sr_1_1?s=books&ie=UTF8&qid=1403932320&sr=1-1&keywords=deco+for+divers[_Deco for Divers_, by Mark Powell (2008). Aquapress] Southend-on-Sea, UK. ISBN 10:1-905492-07-3. Un excelente estudio no técnico en el que se discuten ambos modelos, el de Bühlmann y el VPM-B.
+ * link:https://www.tek-dive.com/portal/upload/M-Values.pdf[Understanding M-values by Erik Baker, _Immersed_ Vol. 3, No. 3.]
+ * link:https://www.rebreatherworld.com/general-and-new-to-rebreather-articles/5037-gradient-factors-for-dummies.html[Gradient factors for dummies, por Kevin Watts]
+ * link:https://www.amazon.com/Deco-Divers-Decompression-Theory-Physiology/dp/1905492073/ref=sr_1_1?s=books&ie=UTF8&qid=1403932320&sr=1-1&keywords=deco+for+divers[_Deco for Divers_, by Mark Powell (2008). Aquapress] Southend-on-Sea, UK. ISBN 10:1-905492-07-3. Un excelente estudio no técnico en el que se discuten ambos modelos, el de Bühlmann y el VPM-B.
 
 La velocidad de ascenso es crítica para la desgasificación al final de la
 inmersión y se especifica para varios rangos utilizando la profundidad media
@@ -4570,7 +4570,7 @@ una inmersión.
 - _Acerca de Subsurface_ - Muestra un panel con el número de versión de
   _Subsurface_ e información de la licencia.
 - _Comprobar si hay actualizaciones_ - Encuentra si hay disponible una nueva
-  versión de _Subsurface_ en la  http://subsurface-divelog.org/[página web de _Subsurface_].
+  versión de _Subsurface_ en la  https://subsurface-divelog.org/[página web de _Subsurface_].
 - <<S_UserSurvey,_Encuesta de usuarios_>> - Ayuda a hacer mejor _Subsurface_
   tomando parte en nuestra encuesta a usuarios, o completando otra si tus hábitos
   de buceo han cambiado.
@@ -4597,7 +4597,7 @@ el dispositivo por primera vez.
 * En un Mac, en ocasiones, el usuario tiene que buscar manualmente el driver
 correcto. Por ejemplo, el driver correcto para los dispositivos Mares Puck puede
 encontrarse como Mac_OSX_VCP_driver.zip en el
-http://www.silabs.com/support/pages/document-library.aspx?p=Interface&f=USB%20Bridges&pn=CP2101[repositorio
+https://www.silabs.com/support/pages/document-library.aspx?p=Interface&f=USB%20Bridges&pn=CP2101[repositorio
 de documentos y software de Silicon Labs].
 
 [[S_HowFindDeviceName]]
@@ -4952,7 +4952,7 @@ fabricado por MosChip y comercializado por Scubapro y algunas compañías de
 electrónica. En Linux, el kernel ya proporciona comunicación usando el protocolo
 IrDA. Sin embargo, el usuario necesita cargar adicionalmente un driver para el
 interface IrDA con el ordenador de buceo. La forma más fácil es cargar el
-paquete *irda-tools* del http://irda.sourceforge.net/docs/startirda.html[Linux
+paquete *irda-tools* del https://irda.sourceforge.net/docs/startirda.html[Linux
 IrDA Project]. Tras la instalación de irda-tools, el *usuario root* puede
 especificar un nombre de dispositivo desde la consola así:
 
@@ -4963,7 +4963,7 @@ descargará la información de buceo.
 
 En Windows existe una situación similar. Hay drivers para el MCS7780 disponibles
 en algunos sitios de internet p.e.
-http://www.drivers-download.com/Drv/MosChip/MCS7780/[www.drivers-download.com].
+https://www.drivers-download.com/Drv/MosChip/MCS7780/[www.drivers-download.com].
 También se pueden encontrar drivers IrDA basados en Windows, para los
 ordenadores Uwatec en el sitio web de ScubaPro, pudiendo encontrarlos en la
 página de descargas del software SmarTrak.
@@ -5372,7 +5372,7 @@ Se puede iterar sobre la lista de la siguiente manera:
        <h1> 3 </h1>
 ....
 
-Se puede encontrar información sobre _Grantlee_ http://www.grantlee.org/apidox/for_themers.html[aquí]
+Se puede encontrar información sobre _Grantlee_ https://www.grantlee.org/apidox/for_themers.html[aquí]
 
 === Variables pasadas a Grantlee
 Solo se pasa un subconjunto de los datos de una inmersión:

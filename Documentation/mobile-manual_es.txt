@@ -7,7 +7,7 @@
 :toc:
 :toc-placement: manual
 :numbered:
-// :website: http://subsurface-divelog.org
+// :website: https://subsurface-divelog.org/
 
 image::mobile-images/Banner.jpg["Banner",align="center"]
 
