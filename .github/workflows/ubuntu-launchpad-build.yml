@@ -3,6 +3,7 @@ on:
   push:
     paths-ignore:
     - scripts/docker/**
+    - Documentation/**
     branches:
     - master
     - current

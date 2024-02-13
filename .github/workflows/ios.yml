@@ -2,11 +2,13 @@ name: iOS
 on:
   push:
     paths-ignore:
+    - Documentation/**
     - scripts/docker/**
     branches:
     - master
   pull_request:
     paths-ignore:
+    - Documentation/**
     - scripts/docker/**
     branches:
     - master

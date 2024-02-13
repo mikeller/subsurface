@@ -4,11 +4,13 @@ on:
   push:
     paths-ignore:
     - scripts/docker/**
+    - Documentation/**
     branches:
     - master
   pull_request:
     paths-ignore:
     - scripts/docker/**
+    - Documentation/**
     branches:
     - master
 

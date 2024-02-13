@@ -4,14 +4,17 @@ name: "CodeQL"
 
 on:
   push:
-    # once this works, this should be
-    # branches: [master]
-    branches: [master, codeQL]
-
+    paths-ignore:
+    - scripts/docker/**
+    - Documentation/**
+    branches:
+    - master
   pull_request:
-    # The branches below must be a subset of the branches above
-    branches: [master]
-
+    paths-ignore:
+    - scripts/docker/**
+    - Documentation/**
+    branches:
+    - master
   schedule:
     - cron: '0 2 * * 6'
 
