@@ -19,6 +19,9 @@ jobs:
         echo "--------------------------------------------------------------"
         echo "update distro and install dependencies"
 
+        echo "GITHUB_SHA: $GITHUB_SHA"
+        echo "github.sha: ${{ github.sha }}"
+
         apt-get update
         apt-get dist-upgrade -y
         DEBIAN_FRONTEND=noninteractive apt-get install -y -q \
@@ -37,6 +40,7 @@ jobs:
         git config --global user.name "Subsurface CI"
         git config --global --add safe.directory $GITHUB_WORKSPACE
         git config --global --add safe.directory $GITHUB_WORKSPACE/libdivecomputer
+
     # needs git from the previous step
     - name: checkout sources
       uses: actions/checkout@v4
