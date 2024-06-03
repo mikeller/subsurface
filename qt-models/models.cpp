@@ -13,15 +13,26 @@
 #include <QDir>
 #include <QLocale>
 
-Qt::ItemFlags GasSelectionModel::flags(const QModelIndex&) const
+Qt::ItemFlags GasSelectionModel::flags(const QModelIndex &index) const
 {
-	return Qt::ItemIsEnabled | Qt::ItemIsSelectable;
+	return listFlags[index.row()];
 }
 
-GasSelectionModel::GasSelectionModel(const dive &d, QObject *parent)
+GasSelectionModel::GasSelectionModel(const dive &d, int dcNr, QObject *parent)
 	: QStringListModel(parent)
 {
-	setStringList(get_dive_gas_list(&d));
+	const divecomputer *dc = get_dive_dc_const(&d, dcNr);
+	QStringList list;
+	for (int i = 0; i < d.cylinders.nr; i++) {
+		list.push_back(get_dive_gas(&d, dcNr, i));
+
+		if (is_cylinder_use_appropriate(dc, get_cylinder(&d, i)))
+			listFlags.push_back(Qt::ItemIsEnabled | Qt::ItemIsSelectable);
+		else
+			listFlags.push_back(Qt::NoItemFlags);
+	}
+
+	setStringList(list);
 }
 
 QVariant GasSelectionModel::data(const QModelIndex &index, int role) const

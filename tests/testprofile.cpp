@@ -18,8 +18,6 @@
 
 void TestProfile::init()
 {
-	setlocale(LC_ALL, "C");
-
 	// Set UTF8 text codec as in real applications
 	QTextCodec::setCodecForLocale(QTextCodec::codecForMib(106));
 	// first, setup the preferences

@@ -5,13 +5,14 @@
 #include "core/dive.h"
 #include "core/gettextfromc.h"
 #include "core/qthelper.h"
+#include "core/errorhelper.h"
 #include "qt-models/diveplannermodel.h"
 
 #include <QMenu>
 #include <QGraphicsSceneMouseEvent>
 #include <QSettings>
 
-DiveHandler::DiveHandler(const struct dive *d) : dive(d)
+DiveHandler::DiveHandler(const struct dive *d, int currentDcNr) : dive(d), dcNr(currentDcNr)
 {
 	setRect(-5, -5, 10, 10);
 	setFlags(ItemIgnoresTransformations | ItemIsSelectable | ItemIsMovable | ItemSendsGeometryChanges);
@@ -31,10 +32,13 @@ void DiveHandler::contextMenuEvent(QGraphicsSceneContextMenuEvent *event)
 	QMenu m;
 	// Don't have a gas selection for the last point
 	emit released();
+
+	report_info("Context Menu");
+
 	DivePlannerPointsModel *plannerModel = DivePlannerPointsModel::instance();
 	QModelIndex index = plannerModel->index(parentIndex(), DivePlannerPointsModel::GAS);
 	if (index.sibling(index.row() + 1, index.column()).isValid()) {
-		QStringList gases = get_dive_gas_list(dive);
+		QStringList gases = get_dive_gas_list(dive, dcNr, true);
 		for (int i = 0; i < gases.size(); i++) {
 			QAction *action = new QAction(&m);
 			action->setText(gases[i]);
@@ -62,10 +66,10 @@ void DiveHandler::selfRemove()
 
 void DiveHandler::changeGas()
 {
-	ProfileWidget2 *view = qobject_cast<ProfileWidget2 *>(scene()->views().first());
 	QAction *action = qobject_cast<QAction *>(sender());
-
-	view->changeGas(parentIndex(), action->data().toInt());
+	DivePlannerPointsModel *plannerModel = DivePlannerPointsModel::instance();
+	QModelIndex index = plannerModel->index(parentIndex(), DivePlannerPointsModel::GAS);
+	plannerModel->gasChange(index.sibling(index.row() + 1, index.column()), action->data().toInt());
 }
 
 void DiveHandler::mouseMoveEvent(QGraphicsSceneMouseEvent *event)

@@ -1902,6 +1902,28 @@ static bool cylinder_in_use(const struct dive *dive, int idx)
 	return cylinder_has_data(get_cylinder(dive, idx));
 }
 
+bool is_cylinder_use_appropriate(const struct divecomputer *dc, const cylinder_t *cyl)
+{
+	switch (cyl->cylinder_use) {
+	case OC:
+		if (dc->divemode == FREEDIVE)
+			return false;
+
+		break;
+	case DILUENT:
+	case OXYGEN:
+		if (dc->divemode != CCR)
+			return false;
+
+		break;
+	case NOT_USED:
+	default:
+		return false;
+	}
+
+	return true;
+}
+
 /*
  * Merging cylinder information is non-trivial, because the two dive computers
  * may have different ideas of what the different cylinder indexing is.

@@ -23,12 +23,12 @@ public:
 		GAS,
 		CCSETPOINT,
 		DIVEMODE,
-		COLUMNS,
+		COLUMNS
 	};
 	enum Mode {
 		NOTHING,
 		PLAN,
-		EDIT,
+		ADD
 	};
 	int columnCount(const QModelIndex &parent = QModelIndex()) const override;
 	QVariant data(const QModelIndex &index, int role = Qt::DisplayRole) const override;
@@ -65,6 +65,7 @@ public:
 
 	void loadFromDive(dive *d, int dcNr);
 	void addStop(int millimeters, int seconds);
+	void setDiveMode(int mode);
 public
 slots:
 	void addDefaultStop();
@@ -95,7 +96,6 @@ slots:
 	void removeDeco();
 	void deleteTemporaryPlan();
 	void emitDataChanged();
-	void setRebreatherMode(int mode);
 	void setReserveGas(int reserve);
 	void setSwitchAtReqStop(bool value);
 	void setMinSwitchDuration(int duration);

@@ -5,6 +5,7 @@
 #include "core/qthelper.h"
 #include "core/color.h"
 #include "qt-models/diveplannermodel.h"
+#include "core/errorhelper.h"
 #include "core/gettextfromc.h"
 #include "core/sample.h"
 #include "core/selection.h"
@@ -474,6 +475,7 @@ bool CylindersModel::setData(const QModelIndex &index, const QVariant &value, in
 	}
 
 	if (inPlanner) {
+		 report_info("setData(inPlanner)");
 		// In the planner - simply overwrite the cylinder in the dive with the modified cylinder.
 		// We have only made a shallow copy, therefore copy the new cylinder first.
 		cylinder_t copy = clone_cylinder(cyl);
@@ -481,6 +483,7 @@ bool CylindersModel::setData(const QModelIndex &index, const QVariant &value, in
 		free_cylinder(copy);
 		dataChanged(index, index);
 	} else {
+		 report_info("setData(!inPlanner)");
 		// On the EquipmentTab - place an editCylinder command.
 		int count = Command::editCylinder(index.row(), cyl, type, false);
 		emit divesEdited(count);
@@ -499,7 +502,7 @@ void CylindersModel::add()
 	if (!d)
 		return;
 	int row = d->cylinders.nr;
-	cylinder_t cyl = create_new_manual_cylinder(d);
+	cylinder_t cyl = create_new_cylinder(d);
 	beginInsertRows(QModelIndex(), row, row);
 	add_cylinder(&d->cylinders, row, cyl);
 	++numRows;

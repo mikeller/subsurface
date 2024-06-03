@@ -52,12 +52,9 @@ void setupPlan(struct diveplan *dp)
 	struct gasmix ean36 = {{360}, {0}};
 	struct gasmix oxygen = {{1000}, {0}};
 	pressure_t po2 = {1600};
-	// Note: we add the highest-index cylinder first, because
-	// pointers to cylinders are not stable when reallocating.
-	// For testing OK - don't do this in actual code!
-	cylinder_t *cyl2 = get_or_create_cylinder(&dive, 2);
 	cylinder_t *cyl0 = get_or_create_cylinder(&dive, 0);
 	cylinder_t *cyl1 = get_or_create_cylinder(&dive, 1);
+	cylinder_t *cyl2 = get_or_create_cylinder(&dive, 2);
 	cyl0->gasmix = bottomgas;
 	cyl0->type.size.mliter = 36000;
 	cyl0->type.workingpressure.mbar = 232000;
@@ -86,12 +83,9 @@ void setupPlanVpmb45m30mTx(struct diveplan *dp)
 	struct gasmix ean50 = {{500}, {0}};
 	struct gasmix oxygen = {{1000}, {0}};
 	pressure_t po2 = {1600};
-	// Note: we add the highest-index cylinder first, because
-	// pointers to cylinders are not stable when reallocating.
-	// For testing OK - don't do this in actual code!
-	cylinder_t *cyl2 = get_or_create_cylinder(&dive, 2);
 	cylinder_t *cyl0 = get_or_create_cylinder(&dive, 0);
 	cylinder_t *cyl1 = get_or_create_cylinder(&dive, 1);
+	cylinder_t *cyl2 = get_or_create_cylinder(&dive, 2);
 	cyl0->gasmix = bottomgas;
 	cyl0->type.size.mliter = 24000;
 	cyl0->type.workingpressure.mbar = 232000;
@@ -120,12 +114,9 @@ void setupPlanVpmb60m10mTx(struct diveplan *dp)
 	struct gasmix tx50_15 = {{500}, {150}};
 	struct gasmix oxygen = {{1000}, {0}};
 	pressure_t po2 = {1600};
-	// Note: we add the highest-index cylinder first, because
-	// pointers to cylinders are not stable when reallocating.
-	// For testing OK - don't do this in actual code!
-	cylinder_t *cyl2 = get_or_create_cylinder(&dive, 2);
 	cylinder_t *cyl0 = get_or_create_cylinder(&dive, 0);
 	cylinder_t *cyl1 = get_or_create_cylinder(&dive, 1);
+	cylinder_t *cyl2 = get_or_create_cylinder(&dive, 2);
 	cyl0->gasmix = bottomgas;
 	cyl0->type.size.mliter = 24000;
 	cyl0->type.workingpressure.mbar = 232000;
@@ -172,11 +163,8 @@ void setupPlanVpmb60m30minEan50(struct diveplan *dp)
 	struct gasmix bottomgas = {{210}, {0}};
 	struct gasmix ean50 = {{500}, {0}};
 	pressure_t po2 = {1600};
-	// Note: we add the highest-index cylinder first, because
-	// pointers to cylinders are not stable when reallocating.
-	// For testing OK - don't do this in actual code!
-	cylinder_t *cyl1 = get_or_create_cylinder(&dive, 1);
 	cylinder_t *cyl0 = get_or_create_cylinder(&dive, 0);
+	cylinder_t *cyl1 = get_or_create_cylinder(&dive, 1);
 	cyl0->gasmix = bottomgas;
 	cyl0->type.size.mliter = 36000;
 	cyl0->type.workingpressure.mbar = 232000;
@@ -201,11 +189,8 @@ void setupPlanVpmb60m30minTx(struct diveplan *dp)
 	struct gasmix bottomgas = {{180}, {450}};
 	struct gasmix ean50 = {{500}, {0}};
 	pressure_t po2 = {1600};
-	// Note: we add the highest-index cylinder first, because
-	// pointers to cylinders are not stable when reallocating.
-	// For testing OK - don't do this in actual code!
-	cylinder_t *cyl1 = get_or_create_cylinder(&dive, 1);
 	cylinder_t *cyl0 = get_or_create_cylinder(&dive, 0);
+	cylinder_t *cyl1 = get_or_create_cylinder(&dive, 1);
 	cyl0->gasmix = bottomgas;
 	cyl0->type.size.mliter = 36000;
 	cyl0->type.workingpressure.mbar = 232000;
@@ -254,12 +239,9 @@ void setupPlanVpmb100m60min(struct diveplan *dp)
 	struct gasmix ean50 = {{500}, {0}};
 	struct gasmix oxygen = {{1000}, {0}};
 	pressure_t po2 = {1600};
-	// Note: we add the highest-index cylinder first, because
-	// pointers to cylinders are not stable when reallocating.
-	// For testing OK - don't do this in actual code!
-	cylinder_t *cyl2 = get_or_create_cylinder(&dive, 2);
 	cylinder_t *cyl0 = get_or_create_cylinder(&dive, 0);
 	cylinder_t *cyl1 = get_or_create_cylinder(&dive, 1);
+	cylinder_t *cyl2 = get_or_create_cylinder(&dive, 2);
 	cyl0->gasmix = bottomgas;
 	cyl0->type.size.mliter = 200000;
 	cyl0->type.workingpressure.mbar = 232000;
@@ -287,12 +269,9 @@ void setupPlanVpmb100m10min(struct diveplan *dp)
 	struct gasmix ean50 = {{500}, {0}};
 	struct gasmix oxygen = {{1000}, {0}};
 	pressure_t po2 = {1600};
-	// Note: we add the highest-index cylinder first, because
-	// pointers to cylinders are not stable when reallocating.
-	// For testing OK - don't do this in actual code!
-	cylinder_t *cyl2 = get_or_create_cylinder(&dive, 2);
 	cylinder_t *cyl0 = get_or_create_cylinder(&dive, 0);
 	cylinder_t *cyl1 = get_or_create_cylinder(&dive, 1);
+	cylinder_t *cyl2 = get_or_create_cylinder(&dive, 2);
 	cyl0->gasmix = bottomgas;
 	cyl0->type.size.mliter = 60000;
 	cyl0->type.workingpressure.mbar = 232000;
@@ -342,13 +321,10 @@ void setupPlanVpmb100mTo70m30min(struct diveplan *dp)
 	struct gasmix ean50 = {{500}, {0}};
 	struct gasmix oxygen = {{1000}, {0}};
 	pressure_t po2 = {1600};
-	// Note: we add the highest-index cylinder first, because
-	// pointers to cylinders are not stable when reallocating.
-	// For testing OK - don't do this in actual code!
-	cylinder_t *cyl3 = get_or_create_cylinder(&dive, 3);
 	cylinder_t *cyl0 = get_or_create_cylinder(&dive, 0);
 	cylinder_t *cyl1 = get_or_create_cylinder(&dive, 1);
 	cylinder_t *cyl2 = get_or_create_cylinder(&dive, 2);
+	cylinder_t *cyl3 = get_or_create_cylinder(&dive, 3);
 	cyl0->gasmix = bottomgas;
 	cyl0->type.size.mliter = 36000;
 	cyl0->type.workingpressure.mbar = 232000;
@@ -381,11 +357,8 @@ void setupPlanSeveralGases(struct diveplan *dp)
 	struct gasmix ean36 = {{360}, {0}};
 	struct gasmix tx11_50 = {{110}, {500}};
 
-	// Note: we add the highest-index cylinder first, because
-	// pointers to cylinders are not stable when reallocating.
-	// For testing OK - don't do this in actual code!
-	cylinder_t *cyl1 = get_or_create_cylinder(&dive, 1);
 	cylinder_t *cyl0 = get_or_create_cylinder(&dive, 0);
+	cylinder_t *cyl1 = get_or_create_cylinder(&dive, 1);
 	cyl0->gasmix = ean36;
 	cyl0->type.size.mliter = 36000;
 	cyl0->type.workingpressure.mbar = 232000;
@@ -413,12 +386,9 @@ void setupPlanCcr(struct diveplan *dp)
 	struct gasmix diluent = {{200}, {210}};
 	struct gasmix ean53 = {{530}, {0}};
 	struct gasmix tx19_33 = {{190}, {330}};
-	// Note: we add the highest-index cylinder first, because
-	// pointers to cylinders are not stable when reallocating.
-	// For testing OK - don't do this in actual code!
-	cylinder_t *cyl2 = get_or_create_cylinder(&dive, 2);
 	cylinder_t *cyl0 = get_or_create_cylinder(&dive, 0);
 	cylinder_t *cyl1 = get_or_create_cylinder(&dive, 1);
+	cylinder_t *cyl2 = get_or_create_cylinder(&dive, 2);
 	cyl0->gasmix = diluent;
 	cyl0->depth = gas_mod(diluent, po2, &dive, M_OR_FT(3, 10));
 	cyl0->type.size.mliter = 3000;

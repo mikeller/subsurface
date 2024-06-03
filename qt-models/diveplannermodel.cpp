@@ -86,12 +86,12 @@ void DivePlannerPointsModel::createSimpleDive(struct dive *dIn)
 	// If we're in drop_stone_mode, don't add a first point.
 	// It will be added implicitly.
 	if (!prefs.drop_stone_mode)
-		addStop(M_OR_FT(15, 45), 1 * 60, cylinderid, 0, true, UNDEF_COMP_TYPE);
+		addStop(M_OR_FT(15, 45), 1 * 60, cylinderid, prefs.defaultsetpoint, true, UNDEF_COMP_TYPE);
 
-	addStop(M_OR_FT(15, 45), 20 * 60, 0, 0, true, UNDEF_COMP_TYPE);
+	addStop(M_OR_FT(15, 45), 20 * 60, 0, prefs.defaultsetpoint, true, UNDEF_COMP_TYPE);
 	if (!isPlanner()) {
-		addStop(M_OR_FT(5, 15), 42 * 60, 0, cylinderid, true, UNDEF_COMP_TYPE);
-		addStop(M_OR_FT(5, 15), 45 * 60, 0, cylinderid, true, UNDEF_COMP_TYPE);
+		addStop(M_OR_FT(5, 15), 42 * 60, cylinderid, prefs.defaultsetpoint, true, UNDEF_COMP_TYPE);
+		addStop(M_OR_FT(5, 15), 45 * 60, cylinderid, prefs.defaultsetpoint, true, UNDEF_COMP_TYPE);
 	}
 	updateDiveProfile();
 }
@@ -206,8 +206,20 @@ void DivePlannerPointsModel::setupCylinders()
 			return;		// We have at least one cylinder
 		}
 	}
-
-	add_default_cylinder(d);
+	if (!empty_string(prefs.default_cylinder)) {
+		cylinder_t cyl = empty_cylinder;
+		fill_default_cylinder(d, &cyl);
+		cyl.start = cyl.type.workingpressure;
+		add_cylinder(&d->cylinders, 0, cyl);
+	} else {
+		cylinder_t cyl = empty_cylinder;
+		// roughly an AL80
+		cyl.type.description = copy_qstring(tr("unknown"));
+		cyl.type.size.mliter = 11100;
+		cyl.type.workingpressure.mbar = 207000;
+		add_cylinder(&d->cylinders, 0, cyl);
+	}
+	reset_cylinders(d, false);
 	cylinders.updateDive(d, dcNr);
 }
 
@@ -260,13 +272,39 @@ int DivePlannerPointsModel::columnCount(const QModelIndex&) const
 	return COLUMNS; // to disable CCSETPOINT subtract one
 }
 
+static divemode_t get_local_divemode(struct dive *d, int dcNr, const divedatapoint &p)
+{
+	divemode_t divemode;
+	switch (get_dive_dc(d, dcNr)->divemode) {
+	case OC:
+	default:
+		divemode = OC;
+
+		break;
+	case CCR:
+		divemode = get_cylinder(d, p.cylinderid)->cylinder_use == DILUENT ? CCR : OC;
+		if (prefs.allowOcGasAsDiluent && get_cylinder(d, p.cylinderid)->cylinder_use == OC_GAS && p.divemode == CCR)
+			divemode = CCR;
+
+		break;
+	case PSCR:
+		divemode = p.divemode == PSCR ? PSCR : OC;
+
+		break;
+	}
+
+	return divemode;
+}
+
 QVariant DivePlannerPointsModel::data(const QModelIndex &index, int role) const
 {
-	divedatapoint p = divepoints.at(index.row());
+	const divedatapoint p = divepoints.at(index.row());
 	if (role == Qt::DisplayRole || role == Qt::EditRole) {
+		divemode_t divemode = get_local_divemode(d, dcNr, p);
+
 		switch (index.column()) {
 		case CCSETPOINT:
-			return (double)p.setpoint / 1000;
+			return (double)((divemode == CCR) ? p.setpoint / 1000.0 : 0.0);
 		case DEPTH:
 			return (int) lrint(get_depth_units(p.depth.mm, NULL, NULL));
 		case RUNTIME:
@@ -277,17 +315,9 @@ QVariant DivePlannerPointsModel::data(const QModelIndex &index, int role) const
 			else
 				return p.time / 60;
 		case DIVEMODE:
-			return gettextFromC::tr(divemode_text_ui[p.divemode]);
+			return gettextFromC::tr(divemode_text_ui[divemode]);
 		case GAS:
-			/* Check if we have the same gasmix two or more times
-			 * If yes return more verbose string */
-			int same_gas = same_gasmix_cylinder(get_cylinder(d, p.cylinderid), p.cylinderid, d, true);
-			if (same_gas == -1)
-				return get_gas_string(get_cylinder(d, p.cylinderid)->gasmix);
-			else
-				return get_gas_string(get_cylinder(d, p.cylinderid)->gasmix) +
-					QString(" (%1 %2 ").arg(tr("cyl.")).arg(p.cylinderid + 1) +
-						get_cylinder(d, p.cylinderid)->type.description + ")";
+			return get_dive_gas(d, dcNr, p.cylinderid);
 		}
 	} else if (role == Qt::DecorationRole) {
 		switch (index.column()) {
@@ -376,7 +406,6 @@ bool DivePlannerPointsModel::setData(const QModelIndex &index, const QVariant &v
 		case DIVEMODE:
 			if (value.toInt() < FREEDIVE) {
 				p.divemode = (enum divemode_t) value.toInt();
-				p.setpoint = p.divemode == CCR ? prefs.defaultsetpoint : 0;
 			}
 			break;
 		}
@@ -415,7 +444,7 @@ QVariant DivePlannerPointsModel::headerData(int section, Qt::Orientation orienta
 		case GAS:
 			return tr("Used gas");
 		case CCSETPOINT:
-			return tr("CC setpoint");
+			return tr("Setpoint");
 		case DIVEMODE:
 			return tr("Dive mode");
 		}
@@ -536,13 +565,12 @@ int DivePlannerPointsModel::gfLow() const
 	return diveplan.gflow;
 }
 
-void DivePlannerPointsModel::setRebreatherMode(int mode)
+void DivePlannerPointsModel::setDiveMode(int mode)
 {
-	get_dive_dc(d, dcNr)->divemode = (divemode_t) mode;
-	for (int i = 0; i < rowCount(); i++) {
-		divepoints[i].setpoint = mode == CCR ? prefs.defaultsetpoint : 0;
-		divepoints[i].divemode = (enum divemode_t) mode;
-	}
+	struct divecomputer *dc = get_dive_dc(d, dcNr);
+	if (dc)
+		dc->divemode = (divemode_t) mode;
+
 	emitDataChanged();
 }
 
@@ -751,13 +779,13 @@ int DivePlannerPointsModel::lastEnteredPoint() const
 void DivePlannerPointsModel::addDefaultStop()
 {
 	removeDeco();
-	addStop(0, 0, -1, 0, true, UNDEF_COMP_TYPE);
+	addStop(0, 0, -1, prefs.defaultsetpoint, true, UNDEF_COMP_TYPE);
 }
 
 void DivePlannerPointsModel::addStop(int milimeters, int seconds)
 {
 	removeDeco();
-	addStop(milimeters, seconds, -1, 0, true, UNDEF_COMP_TYPE);
+	addStop(milimeters, seconds, -1, prefs.defaultsetpoint, true, UNDEF_COMP_TYPE);
 	updateDiveProfile();
 }
 
@@ -773,18 +801,20 @@ int DivePlannerPointsModel::addStop(int milimeters, int seconds, int cylinderid_
 		usePrevious = true;
 
 	int row = divepoints.count();
-	if (seconds == 0 && milimeters == 0 && row != 0) {
-		/* this is only possible if the user clicked on the 'plus' sign on the DivePoints Table */
-		const divedatapoint t = divepoints.at(lastEnteredPoint());
-		milimeters = t.depth.mm;
-		seconds = t.time + 600; // 10 minutes.
-		cylinderid = t.cylinderid;
-		ccpoint = t.setpoint;
-	} else if (seconds == 0 && milimeters == 0 && row == 0) {
-		milimeters = M_OR_FT(5, 15); // 5m / 15ft
-		seconds = 600;		     // 10 min
-		// Default to the first cylinder
-		cylinderid = 0;
+	if (seconds == 0 && milimeters == 0) {
+		if (row == 0) {
+			milimeters = M_OR_FT(5, 15); // 5m / 15ft
+			seconds = 600;		     // 10 min
+			// Default to the first cylinder
+			cylinderid = 0;
+		} else {
+			/* this is only possible if the user clicked on the 'plus' sign on the DivePoints Table */
+			const divedatapoint t = divepoints.at(lastEnteredPoint());
+			milimeters = t.depth.mm;
+			seconds = t.time + 600; // 10 minutes.
+			cylinderid = t.cylinderid;
+			ccpoint = t.setpoint;
+		}
 	}
 
 	// check if there's already a new stop before this one:
@@ -1037,16 +1067,17 @@ void DivePlannerPointsModel::createTemporaryPlan()
 
 	int lastIndex = -1;
 	for (int i = 0; i < rowCount(); i++) {
-		divedatapoint p = at(i);
+		const divedatapoint p = at(i);
+		divemode_t divemode = get_local_divemode(d, dcNr, p);
 		int deltaT = lastIndex != -1 ? p.time - at(lastIndex).time : p.time;
 		lastIndex = i;
 		if (i == 0 && mode == PLAN && prefs.drop_stone_mode) {
 			/* Okay, we add a first segment where we go down to depth */
-			plan_add_segment(&diveplan, p.depth.mm / prefs.descrate, p.depth.mm, p.cylinderid, p.setpoint, true, p.divemode);
+			plan_add_segment(&diveplan, p.depth.mm / prefs.descrate, p.depth.mm, p.cylinderid, divemode == CCR ? p.setpoint : 0, true, divemode);
 			deltaT -= p.depth.mm / prefs.descrate;
 		}
 		if (p.entered)
-			plan_add_segment(&diveplan, deltaT, p.depth.mm, p.cylinderid, p.setpoint, true, p.divemode);
+			plan_add_segment(&diveplan, deltaT, p.depth.mm, p.cylinderid, divemode == CCR ? p.setpoint : 0, true, divemode);
 	}
 
 #if DEBUG_PLAN
@@ -1276,7 +1307,7 @@ void DivePlannerPointsModel::computeVariationsDone(QString variations)
 	emit calculatedPlanNotes(QString(d->notes));
 }
 
-void DivePlannerPointsModel::createPlan(bool saveAsNew)
+void DivePlannerPointsModel::createPlan(bool replanCopy)
 {
 	// Ok, so, here the diveplan creates a dive
 	deco_state_cache cache;
@@ -1338,7 +1369,7 @@ void DivePlannerPointsModel::createPlan(bool saveAsNew)
 #endif // !SUBSURFACE_TESTING
 	} else {
 		copy_events_until(current_dive, d, dcNr, preserved_until.seconds);
-		if (saveAsNew) {
+		if (replanCopy) {
 			// we were planning an old dive and save as a new dive
 			d->id = dive_getUniqID(); // Things will break horribly if we create dives with the same id.
 #if !defined(SUBSURFACE_TESTING)

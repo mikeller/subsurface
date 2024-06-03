@@ -166,6 +166,15 @@ void ProfileWidget2::setupItemOnScene()
 #endif
 }
 
+void ProfileWidget2::updateCylinders()
+{
+	plannerModel->cylindersModel()->updateDive(mutable_dive(), dc);
+
+	report_info("Updated cylinders");
+
+	plotDive(d, dc);
+}
+
 void ProfileWidget2::replot()
 {
 	plotDive(d, dc);
@@ -449,6 +458,8 @@ void ProfileWidget2::setEditState(const dive *d, int dc)
 	if (currentState == EDIT)
 		return;
 
+	report_info("Edit state");
+
 	setProfileState(d, dc);
 	mouseFollowerHorizontal->setVisible(true);
 	mouseFollowerVertical->setVisible(true);
@@ -465,6 +476,8 @@ void ProfileWidget2::setPlanState(const dive *d, int dc)
 {
 	if (currentState == PLAN)
 		return;
+
+	report_info("Plan state");
 
 	setProfileState(d, dc);
 	mouseFollowerHorizontal->setVisible(true);
@@ -500,18 +513,6 @@ struct int ProfileWidget2::getEntryFromPos(QPointF pos)
 #endif
 
 #ifndef SUBSURFACE_MOBILE
-/// Prints cylinder information for display.
-/// eg : "Cyl 1 (AL80 EAN32)"
-static QString printCylinderDescription(int i, const cylinder_t *cylinder)
-{
-	QString label = gettextFromC::tr("Cyl") + QString(" %1").arg(i+1);
-	if( cylinder != NULL ) {
-		QString mix = get_gas_string(cylinder->gasmix);
-		label += QString(" (%2 %3)").arg(cylinder->type.description).arg(mix);
-	}
-	return label;
-}
-
 static bool isDiveTextItem(const QGraphicsItem *item, const DiveTextItem *textItem)
 {
 	while (item) {
@@ -562,18 +563,15 @@ void ProfileWidget2::contextMenuEvent(QContextMenuEvent *event)
 	if (d && item && event_is_gaschange(item->getEvent())) {
 		int eventTime = item->getEvent()->time.seconds;
 		QMenu *gasChange = m.addMenu(tr("Edit Gas Change"));
-		for (int i = 0; i < d->cylinders.nr; i++) {
-			const cylinder_t *cylinder = get_cylinder(d, i);
-			QString label = printCylinderDescription(i, cylinder);
-			gasChange->addAction(label, [this, i, eventTime] { addGasSwitch(i, eventTime); });
-		}
+		QStringList gases = get_dive_gas_list(d, dc, true);
+		for (int i = 0; i < d->cylinders.nr; i++)
+			gasChange->addAction(gases[i], [this, i, eventTime] { changeGas(i, eventTime); });
 	} else if (d && d->cylinders.nr > 1) {
 		// if we have more than one gas, offer to switch to another one
 		QMenu *gasChange = m.addMenu(tr("Add gas change"));
+		QStringList gases = get_dive_gas_list(d, dc, true);
 		for (int i = 0; i < d->cylinders.nr; i++) {
-			const cylinder_t *cylinder = get_cylinder(d, i);
-			QString label = printCylinderDescription(i, cylinder);
-			gasChange->addAction(label, [this, i, seconds] { addGasSwitch(i, seconds); });
+			gasChange->addAction(gases[i], [this, i, seconds] { changeGas(i, seconds); });
 		}
 	}
 	m.addAction(tr("Add setpoint change"), [this, seconds]() { ProfileWidget2::addSetpointChange(seconds); });
@@ -759,25 +757,16 @@ void ProfileWidget2::splitDive(int seconds)
 	Command::splitDives(mutable_dive(), duration_t{ seconds });
 }
 
-void ProfileWidget2::addGasSwitch(int tank, int seconds)
+void ProfileWidget2::changeGas(int tank, int seconds)
 {
 	if (!d || tank < 0 || tank >= d->cylinders.nr)
 		return;
 
 	Command::addGasSwitch(mutable_dive(), dc, seconds, tank);
 }
+#endif
 
-void ProfileWidget2::changeGas(int index, int newCylinderId)
-{
-	if ((currentState == PLAN || currentState == EDIT) && plannerModel) {
-		QModelIndex modelIndex = plannerModel->index(index, DivePlannerPointsModel::GAS);
-		plannerModel->gasChange(modelIndex.sibling(modelIndex.row() + 1, modelIndex.column()), newCylinderId);
-
-		if (currentState == EDIT)
-			emit stopEdited();
-	}
-}
-
+#ifndef SUBSURFACE_MOBILE
 void ProfileWidget2::editName(DiveEventItem *item)
 {
 	struct event *event = item->getEventMutable();
@@ -800,8 +789,10 @@ void ProfileWidget2::editName(DiveEventItem *item)
 
 void ProfileWidget2::connectPlannerModel()
 {
+	report_info("connectPlannerModel");
+
 	connect(plannerModel, &DivePlannerPointsModel::dataChanged, this, &ProfileWidget2::replot);
-	connect(plannerModel, &DivePlannerPointsModel::cylinderModelEdited, this, &ProfileWidget2::replot);
+	connect(plannerModel, &DivePlannerPointsModel::cylinderModelEdited, this, &ProfileWidget2::updateCylinders);
 	connect(plannerModel, &DivePlannerPointsModel::modelReset, this, &ProfileWidget2::pointsReset);
 	connect(plannerModel, &DivePlannerPointsModel::rowsInserted, this, &ProfileWidget2::pointInserted);
 	connect(plannerModel, &DivePlannerPointsModel::rowsRemoved, this, &ProfileWidget2::pointsRemoved);
@@ -836,7 +827,7 @@ int ProfileWidget2::handleIndex(const DiveHandler *h) const
 
 DiveHandler *ProfileWidget2::createHandle()
 {
-	DiveHandler *item = new DiveHandler(d);
+	DiveHandler *item = new DiveHandler(d, dc);
 	scene()->addItem(item);
 	connect(item, &DiveHandler::moved, this, &ProfileWidget2::divePlannerHandlerMoved);
 	connect(item, &DiveHandler::clicked, this, &ProfileWidget2::divePlannerHandlerClicked);
