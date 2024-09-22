@@ -88,7 +88,7 @@ int get_cylinderid_at_time(struct dive *dive, struct divecomputer *dc, duration_
 		if (event.time.seconds > time.seconds)
 			break;
 		if (event.name == "gaschange")
-			cylinder_idx = dive->get_cylinder_index(event);
+			cylinder_idx = dive->get_cylinder_index(event, *dc);
 	}
 	return cylinder_idx;
 }
@@ -129,7 +129,8 @@ static int tissue_at_end(struct deco_state *ds, struct dive *dive, const struct 
 		return 0;
 
 	const struct sample *psample = nullptr;
-	divemode_loop loop(*dc);
+	gasmix_loop g_loop(*dive, *dc);
+	divemode_loop d_loop(*dc);
 	for (auto &sample: dc->samples) {
 		o2pressure_t setpoint = psample ? psample->setpoint
 						: sample.setpoint;
@@ -161,7 +162,15 @@ static int tissue_at_end(struct deco_state *ds, struct dive *dive, const struct 
 				ds->max_bottom_ceiling_pressure.mbar = ceiling_pressure.mbar;
 		}
 
-		divemode_t divemode = loop.at(t0.seconds + 1);
+		auto [divemode, divemode_time] = d_loop.at(t0.seconds + 1);
+		auto [cylinder_index, gasmix_time] = g_loop.cylinder_index_at(t0.seconds + 1);
+		if (gasmix_time >= divemode_time) {
+			if (cylinder_index == -1)
+				divemode = OC;
+			else
+				divemode = get_effective_divemode(*dc, *dive->get_cylinder(cylinder_index));
+		}
+
 		interpolate_transition(ds, dive, t0, t1, lastdepth, sample.depth, gas, setpoint, divemode);
 		psample = &sample;
 		t0 = t1;
@@ -635,7 +644,6 @@ std::vector<decostop> plan(struct deco_state *ds, struct diveplan &diveplan, str
 	int laststoptime = timestep;
 	bool o2breaking = false;
 	struct divecomputer *dc = dive->get_dc(dcNr);
-	enum divemode_t divemode = dc->divemode;
 
 	set_gf(diveplan.gflow, diveplan.gfhigh);
 	set_vpmb_conservatism(diveplan.vpmb_conservatism);
@@ -681,9 +689,20 @@ std::vector<decostop> plan(struct deco_state *ds, struct diveplan &diveplan, str
 
 	current_cylinder = get_cylinderid_at_time(dive, dc, sample.time);
 	// Find the divemode at the end of the dive
-	divemode_loop loop(*dc);
-	divemode = loop.at(bottom_time);
-	gas = dive->get_cylinder(current_cylinder)->gasmix;
+	gasmix_loop g_loop(*dive, *dc);
+	divemode_loop d_loop(*dc);
+	auto [divemode, divemode_time] = d_loop.at(bottom_time);
+	auto [cylinder_index, gasmix_time] = g_loop.cylinder_index_at(bottom_time);
+	if (cylinder_index == -1) {
+		gas = gasmix_air;
+		if (gasmix_time >= divemode_time)
+			divemode = OC;
+	} else {
+		const cylinder_t *cylinder = dive->get_cylinder(cylinder_index);
+		gas = cylinder->gasmix;
+		if (gasmix_time >= divemode_time)
+			divemode = get_effective_divemode(*dc, *cylinder);
+	}
 
 	po2 = sample.setpoint.mbar;
 	depth = sample.depth.mm;

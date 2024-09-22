@@ -358,13 +358,16 @@ void populate_pressure_information(const struct dive *dive, const struct divecom
 		int pressure = get_plot_sensor_pressure(pi, i, sensor);
 		int time = entry.sec;
 
+		auto [cylinder_index, gasmix_time] = loop_gas.cylinder_index_at(time);
 		if (has_gaschange) {
-			cyl = loop_gas.cylinder_index_at(time).first;
+			cyl = cylinder_index;
 			if (cyl < 0)
 				cyl = sensor;
 		}
 
-		divemode_t dmode = loop_mode.at(time);
+		auto [dmode, divemode_time] = loop_mode.at(time);
+		if (gasmix_time >= divemode_time)
+			dmode = get_effective_divemode(*dc, *dive->get_cylinder(cylinder_index));
 
 		if (current != std::string::npos) { // calculate pressure-time, taking into account the dive mode for this specific segment.
 			entry.pressure_time = (int)(calc_pressure_time(dive, pi.entry[i - 1], entry) * gasfactor[dmode] + 0.5);

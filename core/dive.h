@@ -103,9 +103,9 @@ struct dive {
 	bool likely_same(const struct dive &b) const;
 	bool is_cylinder_used(int idx) const;
 	bool is_cylinder_prot(int idx) const;
-	int get_cylinder_index(const struct event &ev) const;
+	int get_cylinder_index(const struct event &ev, const struct divecomputer &dc) const;
 	bool has_gaschange_event(const struct divecomputer *dc, int idx) const;
-	struct gasmix get_gasmix_from_event(const struct event &ev) const;
+	std::pair<const struct gasmix, divemode_t> get_gasmix_from_event(const struct event &ev, const struct divecomputer &dc) const;
 	struct gasmix get_gasmix_at_time(const struct divecomputer &dc, duration_t time) const;
 	cylinder_t *get_cylinder(int idx);
 	cylinder_t *get_or_create_cylinder(int idx);
@@ -146,6 +146,7 @@ struct dive_or_trip {
 extern void cylinder_renumber(struct dive &dive, int mapping[]);
 extern int same_gasmix_cylinder(const cylinder_t &cyl, int cylid, const struct dive *dive, bool check_unused);
 extern bool is_cylinder_use_appropriate(const struct divecomputer &dc, const cylinder_t &cyl, bool allowNonUsable);
+extern divemode_t get_effective_divemode(const struct divecomputer &dc, const struct cylinder_t &cylinder);
 
 /* Data stored when copying a dive */
 struct dive_paste_data {
