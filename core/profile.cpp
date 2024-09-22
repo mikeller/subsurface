@@ -874,8 +874,20 @@ static void calculate_deco_information(struct deco_state *ds, const struct deco_
 			int j, t0 = prev.sec, t1 = entry.sec;
 			int time_stepsize = 20, max_ceiling = -1;
 
-			divemode_t current_divemode = loop_d.at(entry.sec);
-			struct gasmix gasmix = loop.at(t1).first;
+			auto [current_divemode, divemode_time] = loop_d.at(entry.sec);
+			auto [cylinder_index, gasmix_time] = loop.cylinder_index_at(entry.sec);
+			const struct gasmix *gasmix;
+			if (cylinder_index == -1) {
+				gasmix = &gasmix_air;
+				if (gasmix_time >= divemode_time)
+					current_divemode = OC;
+			} else {
+				const cylinder_t *cylinder = dive->get_cylinder(cylinder_index);
+				gasmix = &cylinder->gasmix;
+				if (gasmix_time >= divemode_time)
+					current_divemode = get_effective_divemode(*dc, *cylinder);
+			}
+
 			entry.ambpressure = dive->depth_to_bar(entry.depth);
 			entry.gfline = get_gf(ds, entry.ambpressure, dive) * (100.0 - AMB_PERCENTAGE) + AMB_PERCENTAGE;
 			if (t0 > t1) {
@@ -887,7 +899,7 @@ static void calculate_deco_information(struct deco_state *ds, const struct deco_
 			for (j = t0 + time_stepsize; j <= t1; j += time_stepsize) {
 				int depth = interpolate(prev.depth, entry.depth, j - t0, t1 - t0);
 				add_segment(ds, dive->depth_to_bar(depth),
-					    gasmix, time_stepsize, entry.o2pressure.mbar, current_divemode, entry.sac, in_planner);
+					    *gasmix, time_stepsize, entry.o2pressure.mbar, current_divemode, entry.sac, in_planner);
 				entry.icd_warning = ds->icd_warning;
 				if ((t1 - j < time_stepsize) && (j < t1))
 					time_stepsize = t1 - j;
@@ -987,7 +999,7 @@ static void calculate_deco_information(struct deco_state *ds, const struct deco_
 				/* We are going to mess up deco state, so store it for later restore */
 				deco_state_cache cache_data;
 				cache_data.cache(ds);
-				calculate_ndl_tts(ds, dive, entry, gasmix, surface_pressure, current_divemode, in_planner);
+				calculate_ndl_tts(ds, dive, entry, *gasmix, surface_pressure, current_divemode, in_planner);
 				if (decoMode(in_planner) == VPMB && !in_planner && i == pi.nr - 1)
 					final_tts = entry.tts_calc;
 				/* Restore "real" deco state for next real time step */
@@ -1110,10 +1122,21 @@ static void calculate_gas_information_new(const struct dive *dive, const struct 
 		double fn2, fhe;
 		struct plot_data &entry = pi.entry[i];
 
-		auto gasmix = loop.at(entry.sec).first;
+		auto [cylinder_index, gasmix_time] = loop.cylinder_index_at(entry.sec);
+		auto [current_divemode, divemode_time] = loop_d.at(entry.sec);
+		const struct gasmix *gasmix;
+		if (cylinder_index == -1) {
+			gasmix = &gasmix_air;
+			if (gasmix_time >= divemode_time)
+				current_divemode = OC;
+		} else {
+			const cylinder_t *cylinder = dive->get_cylinder(cylinder_index);
+			gasmix = &cylinder->gasmix;
+			if (gasmix_time >= divemode_time)
+				current_divemode = get_effective_divemode(*dc, *cylinder);
+		}
 		amb_pressure = dive->depth_to_bar(entry.depth);
-		divemode_t current_divemode = loop_d.at(entry.sec);
-		entry.pressures = fill_pressures(amb_pressure, gasmix, (current_divemode == OC) ? 0.0 : entry.o2pressure.mbar / 1000.0, current_divemode);
+		entry.pressures = fill_pressures(amb_pressure, *gasmix, (current_divemode == OC) ? 0.0 : entry.o2pressure.mbar / 1000.0, current_divemode);
 		fn2 = 1000.0 * entry.pressures.n2 / amb_pressure;
 		fhe = 1000.0 * entry.pressures.he / amb_pressure;
 		if (dc->divemode == PSCR) { // OC pO2 is calulated for PSCR with or without external PO2 monitoring.
@@ -1126,7 +1149,7 @@ static void calculate_gas_information_new(const struct dive *dive, const struct 
 		 * END takes O₂ + N₂ (air) into account ("Narcotic" for trimix dives)
 		 * EAD just uses N₂ ("Air" for nitrox dives) */
 		pressure_t modpO2 = { .mbar = (int)(prefs.modpO2 * 1000) };
-		entry.mod = dive->gas_mod(gasmix, modpO2, 1).mm;
+		entry.mod = dive->gas_mod(*gasmix, modpO2, 1).mm;
 		entry.end = dive->mbar_to_depth(lrint(dive->depth_to_mbarf(entry.depth) * (1000 - fhe) / 1000.0));
 		entry.ead = dive->mbar_to_depth(lrint(dive->depth_to_mbarf(entry.depth) * fn2 / (double)N2_IN_AIR));
 		entry.eadd = dive->mbar_to_depth(lrint(dive->depth_to_mbarf(entry.depth) *
