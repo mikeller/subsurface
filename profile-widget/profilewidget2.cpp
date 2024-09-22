@@ -571,6 +571,7 @@ void ProfileWidget2::contextMenuEvent(QContextMenuEvent *event)
 	m.addAction(tr("Add bookmark"), [this, seconds]() { addBookmark(seconds); });
 	m.addAction(tr("Split dive into two"), [this, seconds]() { splitDive(seconds); });
 
+	/*
 	divemode_loop loop(*d->get_dc(dc));
 	divemode_t divemode = loop.at(seconds);
 	QMenu *changeMode = m.addMenu(tr("Change divemode"));
@@ -583,6 +584,7 @@ void ProfileWidget2::contextMenuEvent(QContextMenuEvent *event)
 	if (divemode != PSCR)
 		changeMode->addAction(gettextFromC::tr(divemode_text_ui[PSCR]),
 				      [this, seconds](){ addDivemodeSwitch(seconds, PSCR); });
+	*/
 
 	if (DiveEventItem *item = dynamic_cast<DiveEventItem *>(sceneItem)) {
 		m.addAction(tr("Remove event"), [this,item] { removeEvent(item); });

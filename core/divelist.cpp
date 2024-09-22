@@ -433,9 +433,21 @@ static void add_dive_to_deco(struct deco_state *ds, const struct dive &dive, boo
 
 		for (j = t0; j < t1; j++) {
 			depth_t depth = interpolate(psample.depth, sample.depth, j - t0, t1 - t0);
-			auto gasmix = loop.at(j).first;
-			add_segment(ds, dive.depth_to_bar(depth), gasmix, 1, sample.setpoint.mbar,
-				    loop_d.at(j), dive.sac,
+			auto [divemode, divemode_time] = loop_d.at(j);
+			auto [cylinder_index, gasmix_time] = loop.cylinder_index_at(j);
+			const struct gasmix *gasmix;
+			if (cylinder_index == -1) {
+				gasmix = &gasmix_air;
+				if (gasmix_time >= divemode_time)
+					divemode = OC;
+			} else {
+				const cylinder_t *cylinder = dive.get_cylinder(cylinder_index);
+				gasmix = &cylinder->gasmix;
+				if (gasmix_time >= divemode_time)
+					divemode = get_effective_divemode(*dc, *cylinder);
+			}
+			add_segment(ds, dive.depth_to_bar(depth), *gasmix, 1, sample.setpoint.mbar,
+				    divemode, dive.sac,
 				    in_planner);
 		}
 	}
