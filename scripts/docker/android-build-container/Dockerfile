@@ -1,4 +1,4 @@
-FROM ubuntu:22.04 as base
+FROM ubuntu:24.04 as base
 
 RUN apt-get update  && \
     apt-get dist-upgrade -y && \
@@ -22,7 +22,7 @@ COPY --from=subsurface/android-build-container:5.15.1 /android/5.15.1 5.15.1
 
 # install, NDK and SDK there, plus the three files from the Subsurface
 # sources that we need to get the prep routines to run
-RUN wget https://dl.google.com/android/repository/commandlinetools-linux-6858069_latest.zip && \
+RUN wget https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip && \
     unzip commandlinetools-linux-*.zip
 ADD android-build-setup.sh variables.sh .
 
@@ -83,7 +83,6 @@ RUN apt-get install -y \
     bzip2 \
     pkg-config \
     libx11-xcb1 \
-    libgl1-mesa-glx \
     libglib2.0-0 \
     openjdk-8-jdk \
     curl \
