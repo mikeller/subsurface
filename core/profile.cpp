@@ -896,7 +896,7 @@ static void calculate_deco_information(struct deco_state *ds, const struct deco_
 			}
 			if (t0 != t1 && t1 - t0 < time_stepsize)
 				time_stepsize = t1 - t0;
-			for (j = t0 + time_stepsize; j <= t1; j += time_stepsize) {
+			for (int j = t0 + time_stepsize; j <= t1; j += time_stepsize) {
 				depth_t depth = interpolate(prev.depth, entry.depth, j - t0, t1 - t0);
 				add_segment(ds, dive->depth_to_bar(depth),
 					    *gasmix, time_stepsize, entry.o2pressure.mbar, current_divemode, entry.sac, in_planner);
