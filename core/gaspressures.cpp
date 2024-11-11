@@ -21,6 +21,8 @@
 #include <stdlib.h>
 #include <vector>
 
+#define DEBUG_PR_TRACK
+
 /*
  * simple structure to track the beginning and end tank pressure as
  * well as the integral of depth over time spent while we have no
@@ -198,7 +200,7 @@ static void fill_missing_tank_pressures(const struct dive *dive, struct plot_inf
 	dump_pr_track(cyl, track_pr);
 #endif
 
-	/* Transfer interpolated cylinder pressures from pr_track strucktures to plotdata
+	/* Transfer interpolated cylinder pressures from pr_track structures to plotdata
 	 * Go down the list of tank pressures in plot_info. Align them with the start &
 	 * end times of each profile segment represented by a pr_track_t structure. Get
 	 * the accumulated pressure_depths from the pr_track_t structures and then
@@ -248,7 +250,7 @@ static void fill_missing_tank_pressures(const struct dive *dive, struct plot_inf
 			last_segment = it;
 		}
 
-		if(dive->get_cylinder(cyl)->cylinder_use == OC_GAS) {
+		if (dive->get_cylinder(cyl)->cylinder_use == OC_GAS) {
 
 			/* if this segment has pressure_time, then calculate a new interpolated pressure */
 			if (interpolate.pressure_time) {
