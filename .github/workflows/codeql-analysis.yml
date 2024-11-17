@@ -3,6 +3,7 @@
 name: "CodeQL"
 
 on:
+  workflow_dispatch:
   push:
     # once this works, this should be
     # branches: [master]
