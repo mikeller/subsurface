@@ -1,6 +1,7 @@
 name: Windows (MXE) Docker Image
 
 on:
+  workflow_dispatch:
   push:
     branches:
     - master
