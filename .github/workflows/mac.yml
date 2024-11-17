@@ -1,6 +1,7 @@
 name: Mac
 
 on:
+  workflow_dispatch:
   push:
     paths-ignore:
     - scripts/docker/**
