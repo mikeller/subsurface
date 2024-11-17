@@ -80,8 +80,8 @@ jobs:
       run: |
         rm $KEYSTORE_FILE
 
-    - name: publish pull request artifacts
-      if: github.event_name == 'pull_request'
+    - name: publish artifacts
+      if: github.event_name != 'push'
       uses: actions/upload-artifact@v4
       with:
         name: Subsurface-Android-${{ steps.version_number.outputs.version }}
