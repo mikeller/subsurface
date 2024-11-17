@@ -82,8 +82,8 @@ jobs:
         echo "Created $IMG"
         echo "dmg=$IMG" >> $GITHUB_OUTPUT
 
-    - name: publish pull request artifacts
-      if: github.event_name == 'pull_request'
+    - name: publish artifacts
+      if: github.event_name != 'push'
       uses: actions/upload-artifact@v4
       with:
         name: Subsurface-MacOS-${{ steps.version_number.outputs.version }}
