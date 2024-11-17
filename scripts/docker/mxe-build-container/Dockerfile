@@ -1,10 +1,7 @@
 # Build the image using the --build-arg option, e.g.:
 # docker build -t boret/myimage:0.1 --build-arg=mxe_sha=123ABC456 .
 
-# We need to stick with 22.04 for now because the latest MXE version
-# (db430dc676e6f5d77604af150b8acc1403af4fd7) does not build a working
-# version of QtWebKit, which breaks printing in Subsurface.
-FROM ubuntu:22.04 as base
+FROM ubuntu:24.04 as base
 
 # update and set up the packages we need for the build
 RUN apt-get update  &&  \
