@@ -79,8 +79,8 @@ jobs:
         bash -x subsurface/packaging/windows/in-container-build.sh ${BUILD_EXTRA_ARGS} -install-docs 2>&1 | tee build.log
         grep "Built target installer" build.log
 
-    - name: publish pull request artifacts
-      if: github.event_name == 'pull_request'
+    - name: publish artifacts
+      if: github.event_name != 'push'
       uses: actions/upload-artifact@v4
       with:
         name: Subsurface-Windows-${{ steps.version_number.outputs.version }}
