@@ -1,7 +1,6 @@
 name: Ubuntu 20.04 / Qt 5 for AppImage
 
 on:
-  workflow_dispatch:
   push:
     paths-ignore:
     - scripts/docker/**
@@ -63,7 +62,7 @@ jobs:
         echo "building desktop"
 
         BUILD_EXTRA_ARGS=""
-        if [ ${GITHUB_EVENT_NAME} == "push" ]; then
+        if [ "${GITHUB_EVENT_NAME}" = "push" ]; then
           echo "Building a release version"
           BUILD_EXTRA_ARGS="${BUILD_EXTRA_ARGS} -release"
         fi
