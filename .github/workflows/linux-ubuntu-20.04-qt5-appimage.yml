@@ -1,7 +1,6 @@
 name: Ubuntu 20.04 / Qt 5 for AppImage
 
 on:
-  workflow_dispatch:
   push:
     paths-ignore:
     - scripts/docker/**
