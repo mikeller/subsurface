@@ -58,7 +58,7 @@ jobs:
         export CMAKE_PREFIX_PATH=$QT_ROOT/lib/cmake
 
         # now setup Subsurface with WebKit and build the dependencies, using the generic build script
-        bash -e -x ./subsurface/scripts/build.sh -desktop -build-with-webkit -release -build-deps -ftdi -prep-only ${BUILD_EXTRA_ARGS}
+        bash -e -x ./subsurface/scripts/build.sh -desktop -build-with-webkit -build-deps -ftdi -prep-only ${BUILD_EXTRA_ARGS}
 
         echo "finished initial cmake setup of Subsurface - next build the package"
         cd subsurface/build
