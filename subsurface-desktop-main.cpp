@@ -18,6 +18,7 @@
 #include "core/tag.h"
 #include "desktop-widgets/mainwindow.h"
 #include "core/checkcloudconnection.h"
+#include "core/version.h"
 
 #include <QApplication>
 #include <QLoggingCategory>
@@ -30,6 +31,21 @@
 
 static void validateGL();
 static void messageHandler(QtMsgType type, const QMessageLogContext &ctx, const QString &msg);
+
+static void open_logfiles(void)
+{
+	static const std::string path = system_default_directory();
+
+	subsurface_mkdir(path.c_str());
+
+	if (freopen((path + "/subsurface.log").c_str(), "w", stderr))
+		verbose = 2;
+	libdivecomputer_log = fopen((path + "/libdivecomputer.log").c_str(), "w");
+	if (libdivecomputer_log) {
+		fprintf(libdivecomputer_log, "Subsurface: v%s, ", subsurface_git_version());
+		fprintf(libdivecomputer_log, "built with libdivecomputer v%s\n", dc_version(NULL));
+	}
+}
 
 int main(int argc, char **argv)
 {
@@ -45,7 +61,7 @@ int main(int argc, char **argv)
 	std::vector<std::string> importedFiles;
 	QStringList arguments = QCoreApplication::arguments();
 
-	subsurface_mkdir(system_default_directory().c_str());
+	open_logfiles();
 
 	for (int i = 1; i < arguments.length(); i++) {
 		std::string a = arguments[i].toStdString();

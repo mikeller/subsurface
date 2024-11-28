@@ -25,6 +25,8 @@ struct dive;
 struct divelog;
 struct devices;
 
+extern FILE *libdivecomputer_log;
+
 struct device_data_t {
 	dc_descriptor_t *descriptor = nullptr;
 	std::string vendor, product, devname;

@@ -51,6 +51,8 @@ static int stoptime, stopdepth, ndl, po2, cns, heartbeat, bearing;
 static bool in_deco, first_temp_is_air;
 static int current_gas_index;
 
+FILE *libdivecomputer_log;
+
 #define INFO(fmt, ...) report_info("INFO: " fmt, ##__VA_ARGS__)
 #define ERROR(fmt, ...)	report_info("ERROR: " fmt, ##__VA_ARGS__)
 
@@ -1428,7 +1430,7 @@ static dc_status_t sync_divecomputer_time(dc_device_t *device)
 std::string do_libdivecomputer_import(device_data_t *data)
 {
 	dc_status_t rc;
-	FILE *fp = NULL;
+	FILE *fp = libdivecomputer_log;
 
 	import_dive_number = 0;
 	first_temp_is_air = 0;
@@ -1437,9 +1439,6 @@ std::string do_libdivecomputer_import(device_data_t *data)
 	data->iostream = NULL;
 	data->fingerprint = NULL;
 	data->fsize = 0;
-
-	if (data->libdc_log && !logfile_name.empty())
-		fp = subsurface_fopen(logfile_name.c_str(), "w");
 
 	data->libdc_logfile = fp;
 
@@ -1450,8 +1449,6 @@ std::string do_libdivecomputer_import(device_data_t *data)
 	if (fp) {
 		dc_context_set_loglevel(data->context, DC_LOGLEVEL_ALL);
 		dc_context_set_logfunc(data->context, logfunc, fp);
-		fprintf(data->libdc_logfile, "Subsurface: v%s, ", subsurface_git_version());
-		fprintf(data->libdc_logfile, "built with libdivecomputer v%s\n", dc_version(NULL));
 	}
 
 	std::string err = translate("gettextFromC", "Unable to open %s %s (%s)");

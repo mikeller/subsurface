@@ -569,11 +569,8 @@ void ConfigureDiveComputer::resetThreadFinished()
 
 QString ConfigureDiveComputer::dc_open(device_data_t *data)
 {
-	FILE *fp = NULL;
+	FILE *fp = libdivecomputer_log;
 	dc_status_t rc;
-
-	if (data->libdc_log && !logfile_name.empty())
-		fp = subsurface_fopen(logfile_name.c_str(), "w");
 
 	data->libdc_logfile = fp;
 
@@ -585,8 +582,6 @@ QString ConfigureDiveComputer::dc_open(device_data_t *data)
 	if (fp) {
 		dc_context_set_loglevel(data->context, DC_LOGLEVEL_ALL);
 		dc_context_set_logfunc(data->context, logfunc, fp);
-		fprintf(data->libdc_logfile, "Subsurface: v%s, ", subsurface_git_version());
-		fprintf(data->libdc_logfile, "built with libdivecomputer v%s\n", dc_version(NULL));
 	}
 
 	rc = divecomputer_device_open(data);
