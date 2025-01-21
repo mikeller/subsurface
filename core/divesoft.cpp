@@ -26,16 +26,16 @@ int divesoft_import(const std::string &buffer, struct divelog *log)
 {
 	std::string model_identifier = buffer.substr(52, 4);
 	int model = 0;
-	if (model_identifier == divesoft_liberty_serial_prefix)
-		model = divesoft_liberty_model;
-	else if (model_identifier == divesoft_freedom_serial_prefix || model_identifier == divesoft_freedom_plus_serial_prefix)
+	if (model_identifier == divesoft_freedom_serial_prefix || model_identifier == divesoft_freedom_plus_serial_prefix)
 		model = divesoft_freedom_model;
+	else
+		model = divesoft_liberty_model;
 
 	device_data_t devdata;
 	devdata.log = log;
 	int ret = prepare_device_descriptor(model, DC_FAMILY_DIVESOFT_FREEDOM, devdata);
 	if (ret == 0)
-		return report_error("%s", translate("gettextFromC", "Unknown DC"));
+		return report_error("%s", translate("gettextFromC", "Unknown DC: family"));
 
 	auto d = std::make_unique<dive>();
 	d->dcs[0].model = devdata.vendor + " " + devdata.model + " (Imported from file)";
