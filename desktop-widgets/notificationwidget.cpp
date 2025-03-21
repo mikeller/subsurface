@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: GPL-2.0
 #include "notificationwidget.h"
 
+#include "core/errorhelper.h"
+
 NotificationWidget::NotificationWidget(QWidget *parent) : KMessageWidget(parent)
 {
 	connect(&future_watcher, SIGNAL(finished()), this, SLOT(finish()));
@@ -38,5 +40,8 @@ void NotificationWidget::setFuture(const QFuture<int> &future)
 
 void NotificationWidget::finish()
 {
-	hideNotification();
+	if (future_watcher.result())
+		report_error("An error occurred while processing the request.");
+	else
+		hideNotification();
 }
