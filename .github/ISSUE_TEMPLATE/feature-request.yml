@@ -1,0 +1,36 @@
+name: Feature Request
+description: Suggest a new feature or enhancement.
+title: "[Feature Request]: "
+labels: ["feature-request"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for taking the time to submit a feature request! Please fill out the sections below to help us understand your request.
+  - type: textarea
+    attributes:
+      label: Problem Statement
+      description: Is your feature request related to a problem? Please describe.
+      placeholder: ex. I'm always frustrated when...
+      render: text
+  - type: textarea
+    attributes:
+      label: Description
+      description: Please provide a detailed description of the problem.
+      render: text
+      validation:
+        required: true
+  - type: textarea
+    attributes:
+      label: Alternative Solutions
+      description: What alternatives or workarounds have you considered or tried?
+      render: text
+  - type: input
+    attributes:
+      label: Mentions
+      description: Mention any specific people you would like to take a look at this issue.
+      placeholder: ex. @octocat
+  - type: markdown
+    attributes:
+      value: |
+        **Thank you for supporting Subsurface with your feature request!**
