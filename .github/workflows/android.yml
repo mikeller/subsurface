@@ -26,7 +26,7 @@ jobs:
       KEYSTORE_FILE: ${{ github.workspace }}/../subsurface.keystore
     runs-on: ubuntu-latest
     container:
-      image: docker://mikeller/android-build:5.15.4
+      image: docker://subsurface/android-build:5.15.3
 
     steps:
     - name: checkout sources
