@@ -72,7 +72,7 @@ void exit_ui()
 #ifdef SUBSURFACE_MOBILE
 void run_mobile_ui(double initial_font_size)
 {
-#if defined(Q_OS_ANDROID)
+#if defined(Q_OS_ANDROID) && FALSE
 	// work around an odd interaction between the OnePlus flavor of Android and Qt font handling
 	if (getAndroidHWInfo().contains("/OnePlus/")) {
 		QFontInfo qfi(defaultModelFont());
