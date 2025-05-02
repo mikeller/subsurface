@@ -21,8 +21,8 @@ popd
 # is this a release or debug build
 BUILD_TYPE=Debug
 
-# Read build variables
-source $SUBSURFACE_SOURCE/scripts/docker/android-build-container/variables.sh
+# Read build variables that were baked into the docker image
+source $BUILDROOT/variables.sh
 
 # this assumes that the Subsurface source directory is in the same
 # directory hierarchy as the SDK and NDK

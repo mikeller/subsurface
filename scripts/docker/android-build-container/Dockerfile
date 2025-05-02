@@ -62,7 +62,6 @@ RUN rm -rf \
 	   tools/support \
 	   emulator \
 	   platform-tools-2 \
-	   variables.sh \
 	   android-build-setup.sh \
 	   /usr/lib/gcc
 
