@@ -21,6 +21,9 @@ popd
 # is this a release or debug build
 BUILD_TYPE=Debug
 
+# OpenSSL also has an entry in get-dep-lib.sh line 103 that needs to be updated as well.
+OPENSSL_VERSION=1.1.1w
+
 # Read build variables that were baked into the docker image
 source $BUILDROOT/variables.sh
 
