@@ -22,8 +22,8 @@ import android.hardware.usb.UsbManager;
 import android.util.Log;
 import java.io.File;
 import android.net.Uri;
-import android.support.v4.content.FileProvider;
-import android.support.v4.app.ShareCompat;
+import androidx.core.content.FileProvider;
+import androidx.core.app.ShareCompat;
 import android.content.pm.PackageManager;
 import java.util.List;
 import android.content.pm.ResolveInfo;
@@ -130,7 +130,7 @@ public class SubsurfaceMobileActivity extends QtActivity
 
 		// Register the usb permission intent filter.
 		IntentFilter filter = new IntentFilter("org.subsurfacedivelog.mobile.USB_PERMISSION");
-		ContextCompat.registerReceiver(usbReceiver, filter, ContextCompat.RECEIVER_EXPORTED);
+		ContextCompat.registerReceiver(appContext, usbReceiver, filter, ContextCompat.RECEIVER_EXPORTED);
 
 	} // onCreate
 
