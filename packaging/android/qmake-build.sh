@@ -129,9 +129,9 @@ PATH=$TOOLCHAIN/bin:$PATH
 export ANDROID_NDK_HOME=$ANDROID_NDK_ROOT  # redundant, but that's what openssl wants
 
 # make sure we have the font that we need for OnePlus phones due to https://bugreports.qt.io/browse/QTBUG-69494
-if [ ! -f "$SUBSURFACE_SOURCE"/android-mobile/Roboto-Regular.ttf ] ; then
-       cp "$ANDROID_SDK_ROOT"/platforms/"$ANDROID_PLATFORMS"/data/fonts/Roboto-Regular.ttf "$SUBSURFACE_SOURCE"/android-mobile || exit 1
-fi
+#if [ ! -f "$SUBSURFACE_SOURCE"/android-mobile/Roboto-Regular.ttf ] ; then
+#       cp "$ANDROID_SDK_ROOT"/platforms/"$ANDROID_PLATFORMS"/data/fonts/Roboto-Regular.ttf "$SUBSURFACE_SOURCE"/android-mobile || exit 1
+#fi
 
 # next, make sure that the libdivecomputer sources are downloaded and
 # ready for autoconfig

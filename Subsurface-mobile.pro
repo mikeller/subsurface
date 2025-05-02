@@ -348,8 +348,8 @@ android {
 	# ironically, we appear to need to include the Kirigami shaders here
 	# as they are not found when we assume that they are part of the
 	# libkirigami library
+#		android-mobile/font.qrc \
 	RESOURCES += packaging/android/translations.qrc \
-		android-mobile/font.qrc \
 		mobile-widgets/3rdparty/kirigami/src/scenegraph/shaders/shaders.qrc
 	QT += androidextras
 	ANDROID_PACKAGE_SOURCE_DIR = $$PWD/android-mobile
