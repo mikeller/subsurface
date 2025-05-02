@@ -11,6 +11,13 @@ on:
     - scripts/docker/**
     branches:
     - master
+  # Build once more after changes to the Android builder docker image
+  workflow_run:
+    workflows:
+      - Android Docker Image CI
+    types:
+      - completed
+
   workflow_dispatch:
 
 jobs:
