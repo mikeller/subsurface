@@ -212,7 +212,7 @@ for ARCH in $ARCHITECTURES ; do
 	fi
 
 	export TARGET=$ARCH-linux-android
-	export AR=$TOOLCHAIN/bin/$BINUTIL_ARCH-linux-android$EABI-ar
+	export AR=$TOOLCHAIN/bin/llvm-ar
 	export AS=$TOOLCHAIN/bin/$BINUTIL_ARCH-linux-android$EABI-as
 	export CC=$TOOLCHAIN/bin/$TARGET$EABI$ANDROID_PLATFORM_LEVEL-clang
 	export CXX=$TOOLCHAIN/bin/$TARGET$EABI$ANDROID_PLATFORM_LEVEL-clang++
