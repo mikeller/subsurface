@@ -39,6 +39,14 @@
 QString getAndroidHWInfo(); // from android.cpp
 #include <QApplication>
 #include <QFontDatabase>
+
+#undef stdin
+#undef stdout
+#undef stderr
+FILE *stdin = &__sF[0];
+FILE *stdout = &__sF[1];
+FILE *stderr = &__sF[2];
+
 #endif /* Q_OS_ANDROID */
 
 QObject *qqWindowObject = NULL;
