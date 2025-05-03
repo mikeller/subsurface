@@ -21,15 +21,13 @@ popd
 # is this a release or debug build
 BUILD_TYPE=Debug
 
-source $SUBSURFACE_SOURCE/scripts/docker/android-build-container/variables.sh
+# Read build variables that were baked into the docker image
+source $BUILDROOT/variables.sh
 
 ANDROID_PLATFORM_LEVEL=26
 
 # OpenSSL also has an entry in get-dep-lib.sh line 103 that needs to be updated as well.
 OPENSSL_VERSION=1.1.1m
-
-# Read build variables that were baked into the docker image
-#source $BUILDROOT/variables.sh
 
 # this assumes that the Subsurface source directory is in the same
 # directory hierarchy as the SDK and NDK
