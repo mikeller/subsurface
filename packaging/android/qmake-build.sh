@@ -216,9 +216,9 @@ for ARCH in $ARCHITECTURES ; do
 	export AS=$TOOLCHAIN/bin/$BINUTIL_ARCH-linux-android$EABI-as
 	export CC=$TOOLCHAIN/bin/$TARGET$EABI$ANDROID_PLATFORM_LEVEL-clang
 	export CXX=$TOOLCHAIN/bin/$TARGET$EABI$ANDROID_PLATFORM_LEVEL-clang++
-	export LD=$TOOLCHAIN/bin/$BINUTIL_ARCH-linux-android$EABI-ld
-	export RANLIB=$TOOLCHAIN/bin/$BINUTIL_ARCH-linux-android$EABI-ranlib
-	export STRIP=$TOOLCHAIN/bin/$BINUTIL_ARCH-linux-android$EABI-strip
+	export LD=$TOOLCHAIN/bin/ld
+	export RANLIB=$TOOLCHAIN/bin/llvm-ranlib
+	export STRIP=$TOOLCHAIN/bin/llvm-strip
 
 	# set up an install root and create part of the directory structure so the openssl
 	# manual install below doesn't fail
