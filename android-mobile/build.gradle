@@ -11,7 +11,7 @@ buildscript {
     }
 
     dependencies {
-        classpath 'com.android.tools.build:gradle:3.5.4'
+        classpath 'com.android.tools.build:gradle:4.0.1'
     }
 }
 
@@ -76,4 +76,6 @@ android {
         /* Exclude this as it is included in more than one dependency. */
         exclude 'META-INF/androidx/annotation/annotation/LICENSE.txt'
     }
+
+    ndkVersion "23.2.8568313"
 }
