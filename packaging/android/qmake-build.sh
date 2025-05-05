@@ -374,7 +374,7 @@ for ARCH in $ARCHITECTURES ; do
 				-DANDROID_ABI="$ANDROID_ABI" \
 				-DBUILD_SHARED_LIBS="OFF" \
 				-DBUILD_EXAMPLES="OFF" \
-				-DCMAKE_PREFIX_PATH=/android/5.15.1/android/lib/cmake \
+				-DCMAKE_PREFIX_PATH=/android/$LATEST_QT/android/lib/cmake \
 				-DCMAKE_C_COMPILER="$CC" \
 				-DCMAKE_LINKER="$CC" \
 				-DCMAKE_INSTALL_PREFIX="$PREFIX" \

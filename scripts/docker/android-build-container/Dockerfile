@@ -8,9 +8,9 @@ RUN apt-get update  && \
     cmake \
     autoconf \
     libtool-bin \
-    openjdk-8-jdk \
+    openjdk-21-jdk \
     python3-pip \
-    wget && \
+    curl && \
     apt-get clean
 
 
@@ -18,52 +18,43 @@ FROM base as build
 
 WORKDIR /android
 
-# Scrape the manually curated Qt install from the previous build image
-COPY --from=subsurface/android-build-container:5.15.1 /android/5.15.1 5.15.1
-
-# install, NDK and SDK there, plus the three files from the Subsurface
-# sources that we need to get the prep routines to run
-RUN wget https://dl.google.com/android/repository/commandlinetools-linux-6858069_latest.zip && \
-    unzip commandlinetools-linux-*.zip
-ADD android-build-setup.sh variables.sh .
-
 # run the build setup
+# install, NDK and SDK there, plus the three files from the Subsurface
+ADD android-build-setup.sh variables.sh .
 RUN bash -x android-build-setup.sh
 
 # clean up the files that we don't need to keep the container smaller
 RUN rm -rf \
-	   5*/android/lib/*x86* \
-	   5*/android/doc \
-	   5*/android/include/QtHelp \
-	   5*/android/include/QtFbSupport \
-	   5*/android/include/QtFontDatabaseSupport \
-	   5*/android/include/QtNfc \
-	   5*/android/include/QtPrintSupport \
-	   5*/android/include/QtTest \
-	   5*/android/include/QtXml \
-	   5*/android/plugins/geoservices/libqtgeoservices_mapboxgl.so \
-	   5*/android/lib/cmake/Qt5Test/Qt5TestConfig.cmake \
-	   commandlinetools-linux-*.zip \
-	   $( find platforms -name arch-mips -o -name arch-x86 ) \
-	   toolchains/x86-* android-ndk*/toolchains/llvm/prebuilt/x86-* \
-	   platforms/android-[12][2345678] \
-	   platforms/android-*/arch-x86_64 \
-	   ndk/*/sources/cxx-stl/llvm-libc++/libs/x* \
-	   ndk/*/sources/cxx-stl/llvm-libc++/libs/*/*static* \
-	   ndk/*/sources/cxx-stl/llvm-libc++/test \
-	   ndk/*/sources/cxx-stl/llvm-libc++/utils \
-	   ndk/*/sources/cxx-stl/llvmlibc++abi \
-	   ndk/*/sources/cxx-stl/system \
-	   ndk/*/sources/third_party \
-	   ndk/*/sysroot/usr/lib \
-	   build-tools/*/renderscript \
-	   platform-tools/systrace \
-	   tools/lib \
-	   tools/proguard \
-	   tools/support \
-	   emulator \
-	   platform-tools-2 \
 	   android-build-setup.sh
+#	   5*/android/lib/*x86* \
+#	   5*/android/doc \
+#	   5*/android/include/QtHelp \
+#	   5*/android/include/QtFbSupport \
+#	   5*/android/include/QtFontDatabaseSupport \
+#	   5*/android/include/QtNfc \
+#	   5*/android/include/QtPrintSupport \
+#	   5*/android/include/QtTest \
+#	   5*/android/include/QtXml \
+#	   5*/android/plugins/geoservices/libqtgeoservices_mapboxgl.so \
+#	   5*/android/lib/cmake/Qt5Test/Qt5TestConfig.cmake \
+#	   $( find platforms -name arch-mips -o -name arch-x86 ) \
+#	   toolchains/x86-* android-ndk*/toolchains/llvm/prebuilt/x86-* \
+#	   platforms/android-*/arch-x86_64 \
+#	   ndk/*/sources/cxx-stl/llvm-libc++/libs/x* \
+#	   ndk/*/sources/cxx-stl/llvm-libc++/libs/*/*static* \
+#	   ndk/*/sources/cxx-stl/llvm-libc++/test \
+#	   ndk/*/sources/cxx-stl/llvm-libc++/utils \
+#	   ndk/*/sources/cxx-stl/llvmlibc++abi \
+#	   ndk/*/sources/cxx-stl/system \
+#	   ndk/*/sources/third_party \
+#	   ndk/*/sysroot/usr/lib \
+#	   build-tools/*/renderscript \
+#	   platform-tools/systrace \
+#	   tools/lib \
+#	   tools/proguard \
+#	   tools/support \
+#	   emulator \
+#	   platform-tools-2 \
 
 
 FROM base as final
@@ -81,8 +72,6 @@ RUN apt-get install -y \
     pkg-config \
     libx11-xcb1 \
     libglib2.0-0 \
-    openjdk-8-jdk \
-    curl \
     coreutils \
     p7zip-full && \
     apt-get clean
