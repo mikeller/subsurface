@@ -55,6 +55,9 @@ if [ ! -d "$LATEST_QT" ] ; then
 	$HOME/.local/bin/aqt install-qt -O /android/ linux android "$LATEST_QT"
 fi
 
+# Need to use a newer version of gradle
+sed -i 's/^distributionUrl=.*$/distributionUrl=https\\:\/\/services.gradle.org\/distributions\/gradle-8.14-bin.zip/g' /android/$LATEST_QT/android/src/3rdparty/gradle/gradle/wrapper/gradle-wrapper.properties
+
 # now that we have an NDK, copy the font that we need for OnePlus phones
 # due to https://bugreports.qt.io/browse/QTBUG-69494
 #cp "$ANDROID_HOME"/platforms/"$ANDROID_PLATFORMS"/data/fonts/Roboto-Regular.ttf "$SCRIPTDIR"/../../android-mobile || exit 1
