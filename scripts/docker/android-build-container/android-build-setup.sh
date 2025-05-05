@@ -17,15 +17,9 @@ SCRIPTDIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" > /dev/null && pwd )"
 # these are the current versions for Qt, Android SDK & NDK:
 source "$SCRIPTDIR"/variables.sh
 
-# make sure we were started from the right directory
-if [ ! -d cmdline-tools ] ; then
-	echo "Start from within your Android build directory which needs to already include the Android Cmdline Tools"
-	exit 1
-fi
-
 # make sure we have the required commands installed
 MISSING=
-for i in git cmake autoconf libtool java wget unzip; do
+for i in git cmake autoconf libtool java curl unzip; do
 	command -v $i >/dev/null ||
 		if [ $i = libtool ] ; then
 			MISSING="${MISSING}libtool-bin "
@@ -41,7 +35,12 @@ if [ "$MISSING" ] ; then
 	exit 1
 fi
 
-# first we need to get the Android SDK and NDK
+# install the Android Command Line Tools
+curl -O -L https://dl.google.com/android/repository/commandlinetools-linux-13114758_latest.zip
+unzip commandlinetools-linux-*.zip
+rm commandlinetools-linux-*.zip
+
+# we need to get the Android SDK and NDK
 export JAVA_HOME=/usr
 export ANDROID_HOME=$(pwd)
 export PATH=$ANDROID_HOME/cmdline-tools/bin:/usr/local/bin:/bin:/usr/bin
