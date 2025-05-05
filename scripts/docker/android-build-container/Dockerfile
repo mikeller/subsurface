@@ -63,8 +63,7 @@ RUN rm -rf \
 	   tools/support \
 	   emulator \
 	   platform-tools-2 \
-	   android-build-setup.sh \
-	   /usr/lib/gcc
+	   android-build-setup.sh
 
 
 FROM base as final
