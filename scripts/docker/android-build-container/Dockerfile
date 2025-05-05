@@ -9,6 +9,7 @@ RUN apt-get update  && \
     autoconf \
     libtool-bin \
     openjdk-8-jdk \
+    python3-pip \
     wget && \
     apt-get clean
 
@@ -46,7 +47,7 @@ RUN rm -rf \
 	   $( find platforms -name arch-mips -o -name arch-x86 ) \
 	   toolchains/x86-* android-ndk*/toolchains/llvm/prebuilt/x86-* \
 	   platforms/android-[12][2345678] \
-	   platforms/android-21/arch-x86_64 \
+	   platforms/android-*/arch-x86_64 \
 	   ndk/*/sources/cxx-stl/llvm-libc++/libs/x* \
 	   ndk/*/sources/cxx-stl/llvm-libc++/libs/*/*static* \
 	   ndk/*/sources/cxx-stl/llvm-libc++/test \
@@ -77,8 +78,6 @@ RUN apt-get install -y \
     wget \
     zip \
     unzip \
-    python3 \
-    python3-pip \
     bzip2 \
     pkg-config \
     libx11-xcb1 \
