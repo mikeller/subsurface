@@ -58,4 +58,4 @@ mkdir -p "${SUBSURFACE_ROOT}/${OUTPUT_DIR}"
 docker exec -u ${FULL_USER} -e OUTPUT_DIR=${CONTAINER_SUBSURFACE_DIR}/${OUTPUT_DIR} ${DOCKER_OPTIONS} -t ${CONTAINER_NAME} bash -x subsurface/packaging/android/qmake-build.sh ${BUILD_PARAMETERS}
 
 # Stop the container
-docker stop ${CONTAINER_NAME}
+#docker stop ${CONTAINER_NAME}
