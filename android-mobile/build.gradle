@@ -10,7 +10,7 @@ buildscript {
     }
 
     dependencies {
-        classpath 'com.android.tools.build:gradle:8.9.2'
+        classpath 'com.android.tools.build:gradle:8.0.2'
     }
 }
 
@@ -71,6 +71,10 @@ android {
     packagingOptions {
         /* Exclude this as it is included in more than one dependency. */
         exclude 'META-INF/androidx/annotation/annotation/LICENSE.txt'
+
+        jniLibs {
+            useLegacyPackaging = false
+        }
     }
 
     ndkVersion "23.2.8568313"

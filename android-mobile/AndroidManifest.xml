@@ -88,8 +88,7 @@
         </provider>
     </application>
 
-    <uses-sdk android:minSdkVersion="21"
-	      android:targetSdkVersion="30" />
+    <uses-sdk android:targetSdkVersion="34" />
 
     <supports-screens
         android:anyDensity="true"
