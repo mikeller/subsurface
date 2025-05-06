@@ -46,16 +46,19 @@ export ANDROID_HOME=$(pwd)
 export PATH=$ANDROID_HOME/cmdline-tools/bin:/usr/local/bin:/bin:/usr/bin
 rm -rf cmdline-tools/latest
 yes | sdkmanager --sdk_root="$ANDROID_HOME" "ndk;$NDK_VERSION" "cmdline-tools;latest" "platform-tools" "platforms;$ANDROID_PLATFORMS" "build-tools;$ANDROID_BUILDTOOLS_REVISION"
-yes | sdkmanager --sdk_root=/android --licenses
+yes | sdkmanager --sdk_root="$ANDROID_HOME" --licenses
 
 # next check that Qt is installed
 if [ ! -d "$LATEST_QT" ] ; then
 	pip3 install --break-system-packages --user aqtinstall
-	$HOME/.local/bin/aqt install-qt -O /android/ linux android "$LATEST_QT"
+	$HOME/.local/bin/aqt install-qt -O "$ANDROID_HOME" linux android "$LATEST_QT"
 fi
 
 # Need to use a newer version of gradle
-sed -i 's/^distributionUrl=.*$/distributionUrl=https\\:\/\/services.gradle.org\/distributions\/gradle-8.14-bin.zip/g' /android/$LATEST_QT/android/src/3rdparty/gradle/gradle/wrapper/gradle-wrapper.properties
+sed -i 's/^distributionUrl=.*$/distributionUrl=https\\:\/\/services.gradle.org\/distributions\/gradle-8.14-bin.zip/g' "$ANDROID_HOME/$LATEST_QT/android/src/3rdparty/gradle/gradle/wrapper/gradle-wrapper.properties"
+
+# set up the gradle.properties file to use AndroidX
+echo "android.useAndroidX=true" >> "$ANDROID_HOME/$LATEST_QT/android/src/3rdparty/gradle/gradle.properties"
 
 # now that we have an NDK, copy the font that we need for OnePlus phones
 # due to https://bugreports.qt.io/browse/QTBUG-69494
