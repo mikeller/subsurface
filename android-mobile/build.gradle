@@ -6,7 +6,6 @@
 buildscript {
     repositories {
         mavenCentral()
-        jcenter()
 	google()
     }
 
@@ -18,13 +17,12 @@ buildscript {
 allprojects {
     repositories {
         mavenCentral()
-        jcenter()
-        maven { url 'https://jitpack.io' }
+        maven { url = 'https://jitpack.io/' }
 	google()
     }
 }
 
-apply plugin: 'com.android.application'
+apply plugin: 'com.android.internal.application'
 
 dependencies {
     implementation fileTree(dir: 'libs', include: ['*.jar'])
@@ -47,8 +45,6 @@ android {
      *******************************************************/
 
     compileSdkVersion androidCompileSdkVersion.toInteger()
-
-    buildToolsVersion androidBuildToolsVersion
 
     sourceSets {
         main {
@@ -78,4 +74,6 @@ android {
     }
 
     ndkVersion "23.2.8568313"
+
+    namespace "org.subsurfacedivelog.mobile"
 }
