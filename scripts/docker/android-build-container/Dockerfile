@@ -26,36 +26,23 @@ RUN bash -x android-build-setup.sh
 # clean up the files that we don't need to keep the container smaller
 RUN rm -rf \
 	   android-build-setup.sh
-#	   5*/android/lib/*x86* \
-#	   5*/android/doc \
-#	   5*/android/include/QtHelp \
-#	   5*/android/include/QtFbSupport \
-#	   5*/android/include/QtFontDatabaseSupport \
-#	   5*/android/include/QtNfc \
-#	   5*/android/include/QtPrintSupport \
-#	   5*/android/include/QtTest \
-#	   5*/android/include/QtXml \
-#	   5*/android/plugins/geoservices/libqtgeoservices_mapboxgl.so \
-#	   5*/android/lib/cmake/Qt5Test/Qt5TestConfig.cmake \
-#	   $( find platforms -name arch-mips -o -name arch-x86 ) \
-#	   toolchains/x86-* android-ndk*/toolchains/llvm/prebuilt/x86-* \
-#	   platforms/android-*/arch-x86_64 \
-#	   ndk/*/sources/cxx-stl/llvm-libc++/libs/x* \
-#	   ndk/*/sources/cxx-stl/llvm-libc++/libs/*/*static* \
-#	   ndk/*/sources/cxx-stl/llvm-libc++/test \
-#	   ndk/*/sources/cxx-stl/llvm-libc++/utils \
-#	   ndk/*/sources/cxx-stl/llvmlibc++abi \
-#	   ndk/*/sources/cxx-stl/system \
-#	   ndk/*/sources/third_party \
-#	   ndk/*/sysroot/usr/lib \
-#	   build-tools/*/renderscript \
-#	   platform-tools/systrace \
-#	   tools/lib \
-#	   tools/proguard \
-#	   tools/support \
-#	   emulator \
-#	   platform-tools-2 \
-
+	   #5*/android/lib/*x86* \
+	   #5*/android/doc \
+	   #5*/android/include/QtHelp \
+	   #5*/android/include/QtFbSupport \
+	   #5*/android/include/QtFontDatabaseSupport \
+	   #5*/android/include/QtNfc \
+	   #5*/android/include/QtPrintSupport \
+	   #5*/android/include/QtTest \
+	   #5*/android/include/QtXml \
+	   #5*/android/plugins/geoservices/*qtgeoservices_mapboxgl_*.so \
+	   #5*/android/lib/cmake/Qt5Test/Qt5TestConfig.cmake \
+	   #ndk/*/sources/cxx-stl/llvm-libc++/libs/x* \
+	   #ndk/*/sources/cxx-stl/llvm-libc++/libs/*/*static* \
+	   #ndk/*/sources/cxx-stl/llvm-libc++abi \
+	   #ndk/*/sources/cxx-stl/system \
+	   #ndk/*/sources/third_party
+	   #ndk/*/toolchains/llvm/prebuilt/*x86*
 
 FROM base as final
 
