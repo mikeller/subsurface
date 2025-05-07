@@ -78,8 +78,8 @@
 	    <meta-data android:name="android.max_aspect" android:value="3" />
 
         </activity>
-	<provider
-            android:name="android.support.v4.content.FileProvider"
+        <provider
+            android:name="androidx.core.content.FileProvider"
             android:authorities="org.subsurfacedivelog.mobile.fileprovider"
             android:grantUriPermissions="true"
             android:exported="false">
