@@ -22,7 +22,7 @@ allprojects {
     }
 }
 
-apply plugin: 'com.android.internal.application'
+apply plugin: 'com.android.application'
 
 dependencies {
     implementation fileTree(dir: 'libs', include: ['*.jar'])
@@ -46,6 +46,12 @@ android {
 
     compileSdkVersion androidCompileSdkVersion.toInteger()
 
+    defaultConfig {
+	applicationId "org.subsurfacedivelog.mobile"
+	minSdkVersion qtMinSdkVersion.toInteger()
+	targetSdkVersion 34
+    }
+
     sourceSets {
         main {
             manifest.srcFile 'AndroidManifest.xml'
@@ -67,6 +73,8 @@ android {
     lintOptions {
         abortOnError false
     }
+
+    buildFeatures.aidl = true
 
     packagingOptions {
         /* Exclude this as it is included in more than one dependency. */

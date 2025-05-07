@@ -58,7 +58,7 @@ fi
 sed -i 's/^distributionUrl=.*$/distributionUrl=https\\:\/\/services.gradle.org\/distributions\/gradle-8.14-bin.zip/g' "$ANDROID_HOME/$LATEST_QT/android/src/3rdparty/gradle/gradle/wrapper/gradle-wrapper.properties"
 
 # set up the gradle.properties file to use AndroidX
-echo "android.useAndroidX=true" >> "$ANDROID_HOME/$LATEST_QT/android/src/3rdparty/gradle/gradle.properties"
+echo -e "android.useAndroidX=true\nandroid.enableJetifier=true" >> "$ANDROID_HOME/$LATEST_QT/android/src/3rdparty/gradle/gradle.properties"
 
 # now that we have an NDK, copy the font that we need for OnePlus phones
 # due to https://bugreports.qt.io/browse/QTBUG-69494
