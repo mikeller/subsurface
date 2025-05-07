@@ -444,8 +444,8 @@ if [ -n "${KEYSTORE_FILE+X}" -a -f "${KEYSTORE_FILE-}" -a -n "${KEYSTORE_PASSWOR
 	fi
 
 	zip -d ${APK_FILE} 'META-INF/*.SF' 'META-INF/*.RSA'
-	${BUILDROOT}/build-tools/29.0.3/zipalign -p 4 ${APK_FILE} $(basename ${APK_FILE} .apk)-aligned.apk
-	${BUILDROOT}/build-tools/29.0.3/apksigner sign -ks ${KEYSTORE_FILE} -ks-pass ${KEYSTORE_PASSWORD} ${APKSIGNER_PARAMS} -in $(basename ${APK_FILE} .apk)-aligned.apk -out Subsurface-mobile-"${CANONICALVERSION}".apk
+	${BUILDROOT}/build-tools/$ANDROID_BUILDTOOLS_REVISION/zipalign -p 4 ${APK_FILE} $(basename ${APK_FILE} .apk)-aligned.apk
+	${BUILDROOT}/build-tools/$ANDROID_BUILDTOOLS_REVISION/apksigner sign -ks ${KEYSTORE_FILE} -ks-pass ${KEYSTORE_PASSWORD} ${APKSIGNER_PARAMS} -in $(basename ${APK_FILE} .apk)-aligned.apk -out Subsurface-mobile-"${CANONICALVERSION}".apk
 else
 	mv ${APK_FILE} Subsurface-mobile-"${CANONICALVERSION}".apk
 fi
