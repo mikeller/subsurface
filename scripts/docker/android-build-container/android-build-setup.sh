@@ -60,8 +60,4 @@ sed -i 's/^distributionUrl=.*$/distributionUrl=https\\:\/\/services.gradle.org\/
 # set up the gradle.properties file to use AndroidX
 echo -e "android.useAndroidX=true\nandroid.enableJetifier=true" >> "$ANDROID_HOME/$LATEST_QT/android/src/3rdparty/gradle/gradle.properties"
 
-# now that we have an NDK, copy the font that we need for OnePlus phones
-# due to https://bugreports.qt.io/browse/QTBUG-69494
-#cp "$ANDROID_HOME"/platforms/"$ANDROID_PLATFORMS"/data/fonts/Roboto-Regular.ttf "$SCRIPTDIR"/../../android-mobile || exit 1
-
 echo "things are set up for the Android build"
