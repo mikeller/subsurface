@@ -46,12 +46,6 @@ android {
 
     compileSdkVersion androidCompileSdkVersion.toInteger()
 
-    defaultConfig {
-	applicationId "org.subsurfacedivelog.mobile"
-	minSdkVersion qtMinSdkVersion.toInteger()
-	targetSdkVersion 34
-    }
-
     sourceSets {
         main {
             manifest.srcFile 'AndroidManifest.xml'
@@ -65,6 +59,10 @@ android {
        }
     }
 
+    tasks.withType(JavaCompile) {
+        options.incremental = true
+    }
+
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_1_8
         targetCompatibility JavaVersion.VERSION_1_8
@@ -72,6 +70,13 @@ android {
 
     lintOptions {
         abortOnError false
+    }
+
+    defaultConfig {
+        resConfig "en"
+	applicationId "org.subsurfacedivelog.mobile"
+        minSdkVersion = qtMinSdkVersion
+        targetSdkVersion = androidCompileSdkVersion
     }
 
     buildFeatures.aidl = true
@@ -88,4 +93,5 @@ android {
     ndkVersion "23.2.8568313"
 
     namespace "org.subsurfacedivelog.mobile"
+
 }
