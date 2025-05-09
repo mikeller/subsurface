@@ -118,14 +118,14 @@ fi
 # pick the Qt setup and show the configuration info
 if [ -n "${QT_INSTALL_PREFIX+X}" ] ; then
 	echo "Using Qt in $QT_INSTALL_PREFIX"
-elif [ -d "$SUBSURFACE_SOURCE/../${LATEST_QT}" ] ; then
-	export QT_INSTALL_PREFIX=$SUBSURFACE_SOURCE/../${LATEST_QT}
+elif [ -d "$SUBSURFACE_SOURCE/../${QT_DIR}" ] ; then
+	export QT_INSTALL_PREFIX=$SUBSURFACE_SOURCE/../${QT_DIR}
 else
 	echo "Cannot find Qt 5.12 or newer under $SUBSURFACE_SOURCE/.."
 	exit 1
 fi
 
-QMAKE=$QT_INSTALL_PREFIX/android/bin/qmake
+QMAKE=$QT_INSTALL_PREFIX/android_armv7/bin/qmake
 echo $QMAKE
 $QMAKE -query
 
@@ -369,7 +369,7 @@ for ARCH in $ARCHITECTURES ; do
 				-DANDROID_ABI="$ANDROID_ABI" \
 				-DBUILD_SHARED_LIBS="OFF" \
 				-DBUILD_EXAMPLES="OFF" \
-				-DCMAKE_PREFIX_PATH=$QT_INSTALL_PREFIX/android/lib/cmake \
+				-DCMAKE_PREFIX_PATH=$QT_INSTALL_PREFIX/android_armv7/lib/cmake \
 				-DCMAKE_C_COMPILER="$CC" \
 				-DCMAKE_LINKER="$CC" \
 				-DCMAKE_INSTALL_PREFIX="$PREFIX" \
@@ -414,7 +414,7 @@ if [ "$QUICK" = "" ] ; then
 	pushd "$SUBSURFACE_SOURCE"/packaging/android
 	mkdir -p translation-assets
 	for src in $SRCS; do
-		"$QT_INSTALL_PREFIX"/android/bin/lrelease "$SUBSURFACE_SOURCE"/translations/"$src" -qm translation-assets/"${src/.ts/.qm}"
+		"$QT_INSTALL_PREFIX"/android_armv7/bin/lrelease "$SUBSURFACE_SOURCE"/translations/"$src" -qm translation-assets/"${src/.ts/.qm}"
 	done
 	popd
 fi

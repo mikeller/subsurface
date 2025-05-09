@@ -1,5 +1,8 @@
 FROM ubuntu:24.04 as base
 
+ARG QT_EMAIL
+ARG QT_PASSWORD
+
 RUN apt-get update  && \
     apt-get dist-upgrade -y && \
     apt-get install -y \
@@ -13,15 +16,22 @@ RUN apt-get update  && \
     curl && \
     apt-get clean
 
-
 FROM base as build
 
 WORKDIR /android
 
+RUN apt-get install -y \
+    libxkbcommon-x11-0 \
+    libxcb-icccm4 \
+    libxcb-image0 \
+    libxcb-keysyms1 \
+    libxcb-render-util0 && \
+    apt-get clean
+
 # run the build setup
 # install, NDK and SDK there, plus the three files from the Subsurface
 ADD android-build-setup.sh variables.sh .
-RUN bash -x android-build-setup.sh
+RUN env QT_EMAIL=${QT_EMAIL} QT_PASSWORD=${QT_PASSWORD} bash -x android-build-setup.sh
 
 # clean up the files that we don't need to keep the container smaller
 RUN rm -rf \
