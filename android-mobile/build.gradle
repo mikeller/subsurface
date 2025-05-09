@@ -44,7 +44,7 @@ android {
      * Changing them manually might break the compilation!
      *******************************************************/
 
-    compileSdkVersion androidCompileSdkVersion.toInteger()
+    compileSdkVersion androidCompileSdkVersion
 
     sourceSets {
         main {

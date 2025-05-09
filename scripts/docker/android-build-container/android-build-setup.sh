@@ -42,22 +42,19 @@ rm commandlinetools-linux-*.zip
 
 # we need to get the Android SDK and NDK
 export JAVA_HOME=/usr
-export ANDROID_HOME=$(pwd)
-export PATH=$ANDROID_HOME/cmdline-tools/bin:/usr/local/bin:/bin:/usr/bin
+export INSTALL_DIR=$(pwd)
+export PATH=$INSTALL_DIR/cmdline-tools/bin:/usr/local/bin:/bin:/usr/bin
 rm -rf cmdline-tools/latest
-yes | sdkmanager --sdk_root="$ANDROID_HOME" "ndk;$NDK_VERSION" "cmdline-tools;latest" "platform-tools" "platforms;$ANDROID_PLATFORMS" "build-tools;$ANDROID_BUILDTOOLS_REVISION"
-yes | sdkmanager --sdk_root="$ANDROID_HOME" --licenses
+yes | sdkmanager --sdk_root="$INSTALL_DIR" "ndk;$NDK_VERSION" "cmdline-tools;latest" "platform-tools" "platforms;$ANDROID_PLATFORMS" "build-tools;$ANDROID_BUILDTOOLS_REVISION"
+yes | sdkmanager --sdk_root="$INSTALL_DIR" --licenses
 
 # next check that Qt is installed
-if [ ! -d "$LATEST_QT" ] ; then
-	pip3 install --break-system-packages --user aqtinstall
-	$HOME/.local/bin/aqt install-qt -O "$ANDROID_HOME" linux android "$LATEST_QT"
+if [ ! -d "$INSTALL_DIR/$QT_DIR" ] ; then
+	curl -L -O https://download.qt.io/official_releases/online_installers/qt-online-installer-linux-x64-online.run
+	chmod +x qt-online-installer-linux-x64-online.run
+    QT_PACKAGE_VERSION=$(echo $QT_VERSION | sed 's/\.//g')
+	./qt-online-installer-linux-x64-online.run --root $INSTALL_DIR/Qt --accept-licenses --accept-obligations --confirm-command --default-answer --email $QT_EMAIL --password $QT_PASSWORD --no-save-account install qt.qt5.$QT_PACKAGE_VERSION.android_armv7 qt.qt5.$QT_PACKAGE_VERSION.android_arm64_v8a
+	rm qt-online-installer-linux-x64-online.run
 fi
-
-# Need to use a newer version of gradle
-sed -i 's/^distributionUrl=.*$/distributionUrl=https\\:\/\/services.gradle.org\/distributions\/gradle-8.14-bin.zip/g' "$ANDROID_HOME/$LATEST_QT/android/src/3rdparty/gradle/gradle/wrapper/gradle-wrapper.properties"
-
-# set up the gradle.properties file to use AndroidX
-echo -e "android.useAndroidX=true\nandroid.enableJetifier=true" >> "$ANDROID_HOME/$LATEST_QT/android/src/3rdparty/gradle/gradle.properties"
 
 echo "things are set up for the Android build"

@@ -66,7 +66,7 @@ jobs:
         # this is rather awkward, but it allows us to use the preinstalled
         # Android and Qt versions with relative paths
         cd ..
-        ln -s /android/5.15.* .
+        ln -s /android/Qt .
         ln -s /android/build-tools .
         ln -s /android/cmdline-tools .
         ln -s /android/ndk .

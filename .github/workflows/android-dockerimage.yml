@@ -30,9 +30,13 @@ jobs:
 
     - name: Build and Publish Linux Docker image to Dockerhub
       uses: elgohr/Publish-Docker-Github-Action@v5
+      env:
+        QT_EMAIL: ${{ vars.QT_EMAIL }}
+        QT_PASSWORD: ${{ secrets.QT_PASSWORD }}
       with:
-        name:       ${{ steps.build_name.outputs.NAME }}
-        username:   ${{ secrets.DOCKER_USERNAME }}
-        password:   ${{ secrets.DOCKER_PASSWORD }}
+        name: ${{ steps.build_name.outputs.NAME }}
+        username: ${{ secrets.DOCKER_USERNAME }}
+        password: ${{ secrets.DOCKER_PASSWORD }}
         dockerfile: 'Dockerfile'
-        workdir:    './scripts/docker/android-build-container/'
+        workdir: './scripts/docker/android-build-container/'
+        buildargs: QT_EMAIL, QT_PASSWORD
