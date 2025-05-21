@@ -53,7 +53,7 @@ if [ ! -d "$INSTALL_DIR/$QT_DIR" ] ; then
 	curl -L -O https://download.qt.io/official_releases/online_installers/qt-online-installer-linux-x64-online.run
 	chmod +x qt-online-installer-linux-x64-online.run
     QT_PACKAGE_VERSION=$(echo $QT_VERSION | sed 's/\.//g')
-	./qt-online-installer-linux-x64-online.run --root $INSTALL_DIR/Qt --accept-licenses --accept-obligations --confirm-command --default-answer --email $QT_EMAIL --password $QT_PASSWORD --no-save-account install qt.qt5.$QT_PACKAGE_VERSION.android_armv7 qt.qt5.$QT_PACKAGE_VERSION.android_arm64_v8a
+	./qt-online-installer-linux-x64-online.run --root $INSTALL_DIR/Qt --accept-licenses --accept-obligations --confirm-command --default-answer --email $QT_EMAIL --password $QT_PASSWORD --no-save-account install qt.qt5.$QT_PACKAGE_VERSION
 	rm qt-online-installer-linux-x64-online.run
 fi
 
