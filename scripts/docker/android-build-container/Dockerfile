@@ -29,24 +29,24 @@ RUN apt-get install -y \
     apt-get clean
 
 # run the build setup
-# install, NDK and SDK there, plus the three files from the Subsurface
+# install NDK and SDK there, plus the three files from the Subsurface
 ADD android-build-setup.sh variables.sh .
 RUN env QT_EMAIL=${QT_EMAIL} QT_PASSWORD=${QT_PASSWORD} bash -x android-build-setup.sh
 
 # clean up the files that we don't need to keep the container smaller
 RUN rm -rf \
 	   android-build-setup.sh \
-	   5*/android/lib/*x86* \
-	   5*/android/doc \
-	   5*/android/include/QtHelp \
-	   5*/android/include/QtFbSupport \
-	   5*/android/include/QtFontDatabaseSupport \
-	   5*/android/include/QtNfc \
-	   5*/android/include/QtPrintSupport \
-	   5*/android/include/QtTest \
-	   5*/android/include/QtXml \
-	   5*/android/plugins/geoservices/*qtgeoservices_mapboxgl_*.so \
-	   5*/android/lib/cmake/Qt5Test/Qt5TestConfig.cmake \
+	   Qt/5*/android/lib/*x86* \
+	   Qt/5*/android/doc \
+	   Qt/5*/android/include/QtHelp \
+	   Qt/5*/android/include/QtFbSupport \
+	   Qt/5*/android/include/QtFontDatabaseSupport \
+	   Qt/5*/android/include/QtNfc \
+	   Qt/5*/android/include/QtPrintSupport \
+	   Qt/5*/android/include/QtTest \
+	   Qt/5*/android/include/QtXml \
+	   Qt/5*/android/plugins/geoservices/*qtgeoservices_mapboxgl_*.so \
+	   Qt/5*/android/lib/cmake/Qt5Test/Qt5TestConfig.cmake \
 	   ndk/*/sources/cxx-stl/llvm-libc++/libs/x* \
 	   ndk/*/sources/cxx-stl/llvm-libc++/libs/*/*static* \
 	   ndk/*/sources/cxx-stl/llvm-libc++abi \
