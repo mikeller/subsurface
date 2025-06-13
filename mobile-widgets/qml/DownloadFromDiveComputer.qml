@@ -313,6 +313,7 @@ Kirigami.Page {
 				manager.appendTextToLog(message)
 				progressBar.visible = true
 				divesDownloaded = false // this allows the progressMessage to be displayed
+                manager.createFirmwareUpdater(manager.DC_product)
 				importModel.startDownload()
 			}
 
@@ -494,12 +495,18 @@ Kirigami.Page {
 					// it's important to save the changes because the app could get killed once
 					// it's in the background - and the freshly downloaded dives would get lost
 					manager.changesNeedSaving()
-					pageStack.pop()
-					showDiveList()
-					download.text = qsTr("Download")
+
+                    if (busy && manager.checkFirmwareAvailable(importModel)) {
+                        rootItem.showBusy("Firmware update available")
+					    download.text = qsTr("Update Firmware")
+                    } else {
+					    pageStack.pop()
+					    showDiveList()
+					    rootItem.hideBusy()
+					    download.text = qsTr("Download")
+					    divesDownloaded = false
+                    }
 					busy = false
-					rootItem.hideBusy()
-					divesDownloaded = false
 				}
 			}
 			TemplateLabel {

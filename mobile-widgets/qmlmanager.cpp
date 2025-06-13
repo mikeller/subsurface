@@ -2350,3 +2350,17 @@ QString QMLManager::getPasswordState() const
 		return tr("(incorrect cloud email or password)");
 	return QString();
 }
+
+void QMLManager::createFirmwareUpdater(QString product)
+{
+    ostcFirmwareCheck.reset(getOstcFirmwareCheck(product));
+}
+
+bool QMLManager::checkFirmwareAvailable(DiveImportedModel *diveImportedModel)
+{
+    if (ostcFirmwareCheck) {
+        return ostcFirmwareCheck->checkLatest(diveImportedModel->thread.data()->internalData());
+    }
+
+    return false;
+}
