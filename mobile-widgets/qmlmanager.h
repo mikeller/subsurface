@@ -15,6 +15,7 @@
 #include "core/downloadfromdcthread.h"
 #include "qt-models/completionmodels.h"
 #include "qt-models/divelocationmodel.h"
+#include "qt-models/diveimportedmodel.h"
 #include "core/settings/qPrefCloudStorage.h"
 #include "core/subsurface-qt/divelistnotifier.h"
 
@@ -176,6 +177,8 @@ public:
 	QString getSyncState() const;
 	QString getPasswordState() const;
 
+	void setErrorMessage(QString text);
+	void displayProgress(int progress);
 public slots:
 	void appInitialized();
 	void applicationStateChanged(Qt::ApplicationState state);
@@ -224,6 +227,9 @@ public slots:
 	QString getProductVendorConnectionIdx(android_usb_serial_device_descriptor descriptor);
 #endif
 	void divesChanged(const QVector<dive *> &dives, DiveField field);
+    void createFirmwareUpdater(QString product);
+    bool checkFirmwareAvailable(DiveImportedModel *diveImportedModel);
+    void updateFirmware();
 
 private:
 	BuddyCompletionModel buddyModel;
@@ -285,6 +291,7 @@ private:
 	IosShare iosshare;
 #endif
 	qPrefCloudStorage::cloud_status m_oldStatus;
+    std::unique_ptr<OstcFirmwareCheck> ostcFirmwareCheck;
 
 signals:
 	void verboseEnabledChanged();
