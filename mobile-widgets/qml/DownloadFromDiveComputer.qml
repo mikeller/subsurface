@@ -217,6 +217,22 @@ Kirigami.Page {
 					}
 					download.text = qsTr("Download")
 				}
+			    function disableDC(inx) {
+				    switch (inx) {
+					    case 1:
+						    dc1.enabled = false
+						    break;
+					    case 2:
+						    dc2.enabled = false
+						    break;
+					    case 3:
+						    dc3.enabled = false
+						    break;
+					    case 4:
+						    dc4.enabled = false
+						    break;
+				    }
+			    }
 			}
 		}
 
@@ -236,22 +252,6 @@ Kirigami.Page {
 				comboVendor.currentIndex = comboVendor.find(vendor);
 				comboProduct.currentIndex = comboProduct.find(product);
 				comboConnection.currentIndex = manager.getConnectionIndex(device);
-			}
-			function disableDC(inx) {
-				switch (inx) {
-					case 1:
-						dc1.enabled = false
-						break;
-					case 2:
-						dc2.enabled = false
-						break;
-					case 3:
-						dc3.enabled = false
-						break;
-					case 4:
-						dc4.enabled = false
-						break;
-				}
 			}
 
 			TemplateButton {
@@ -313,6 +313,7 @@ Kirigami.Page {
 				manager.appendTextToLog(message)
 				progressBar.visible = true
 				divesDownloaded = false // this allows the progressMessage to be displayed
+                manager.createFirmwareUpdater(manager.DC_product)
 				importModel.startDownload()
 			}
 
@@ -482,6 +483,7 @@ Kirigami.Page {
 			TemplateButton {
 				id: acceptButton
 				property bool busy: false
+				property int updateState: 0
 				enabled: divesDownloaded
 				text: qsTr("Accept")
 				bottomPadding: Kirigami.Units.gridUnit / 2
@@ -494,12 +496,23 @@ Kirigami.Page {
 					// it's important to save the changes because the app could get killed once
 					// it's in the background - and the freshly downloaded dives would get lost
 					manager.changesNeedSaving()
-					pageStack.pop()
-					showDiveList()
-					download.text = qsTr("Download")
 					busy = false
-					rootItem.hideBusy()
-					divesDownloaded = false
+
+					if (updateState == 0 && manager.checkFirmwareAvailable(importModel)) {
+					    rootItem.showBusy("Firmware update available")
+					    acceptButton.text = qsTr("Update Firmware")
+					    updateState = 1
+					} else if (updateState == 1) {
+					    manager.updateFirmware() 
+					    updateState == 2
+					} else {
+					    pageStack.pop()
+					    showDiveList()
+					    rootItem.hideBusy()
+					    acceptButton.text = qsTr("Accept")
+					    download.text = qsTr("Download")
+					    divesDownloaded = false
+					}
 				}
 			}
 			TemplateLabel {
