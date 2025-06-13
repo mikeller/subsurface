@@ -5,15 +5,17 @@
 #include <QMap>
 #include <QHash>
 #include <QLoggingCategory>
+#include <QNetworkAccessManager>
 
 #include "divelog.h"
 #include "libdivecomputer.h"
 #include "connectionlistmodel.h"
+#include "configuredivecomputer.h"
 #if BT_SUPPORT
-#include "core/btdiscovery.h"
+#include "btdiscovery.h"
 #endif
 #if defined(Q_OS_ANDROID)
-#include "core/serial_usb_android.h"
+#include "serial_usb_android.h"
 #endif
 
 /* Helper object for access of Device Data in QML */
@@ -89,6 +91,34 @@ struct mydescriptor {
 	dc_family_t type;
 	unsigned int model;
 	unsigned int transports;
+};
+
+class OstcFirmwareCheck : public QObject {
+	Q_OBJECT
+public:
+	explicit OstcFirmwareCheck(const QString &product);
+	bool checkLatest(QWidget *parent, device_data_t *data);
+	QString getLatestFirmwareFileName();
+	QString getLatestFirmwareAvailable();
+	QString getFirmwareOnDeviceString();
+	void upgradeFirmware(const QString &filename, ConfigureDiveComputer *config);
+public
+slots:
+	void parseOstcFwVersion(QNetworkReply *reply);
+	void saveOstcFirmware(QNetworkReply *reply);
+
+signals:
+	void checkCompleted();
+
+private:
+	device_data_t devData;
+	QUrl latestFirmwareHexFile;
+	QString latestFirmwareAvailable;
+	QString firmwareOnDeviceString;
+	QString storeFirmware;
+	QWidget *parent;
+	QNetworkAccessManager manager;
+	ConfigureDiveComputer *config;
 };
 
 /* This fills the vendor list QStringList and related members.

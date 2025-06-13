@@ -9,7 +9,6 @@
 #include "core/settings/qPrefDiveComputer.h"
 #include "core/subsurface-float.h"
 #include "core/subsurface-string.h"
-#include "core/downloadfromdcthread.h"
 #include "desktop-widgets/divelistview.h"
 #include "desktop-widgets/mainwindow.h"
 #include "qt-models/diveimportedmodel.h"
@@ -586,10 +585,59 @@ void DownloadFromDCWidget::on_ok_clicked()
 
 	if (ostcFirmwareCheck && currentState == DONE) {
 		connect(ostcFirmwareCheck.get(), &OstcFirmwareCheck::checkCompleted, this, &DownloadFromDCWidget::accept);
-		ostcFirmwareCheck->checkLatest(this, diveImportedModel->thread.data()->internalData(), filename);
-	} else {
-		accept();
+
+		if (!ostcFirmwareCheck->checkLatest(this, diveImportedModel->thread.data()->internalData())) {
+			showUpdateDialog();
+
+			return;
+		}
 	}
+
+	accept();
+}
+
+void DownloadFromDCWidget::showUpdateDialog()
+{
+	QString latestFirmwareAvailable = ostcFirmwareCheck->getLatestFirmwareAvailable();
+	QString firmwareOnDeviceString = ostcFirmwareCheck->getFirmwareOnDeviceString();
+	QString latestFirmwareFileName = ostcFirmwareCheck->getLatestFirmwareFileName();
+
+	QMessageBox response(this);
+	QString message = tr("A firmware update for your dive computer is available: you have version %1 but the latest stable version is %2.\nNot using the latest available stable firmware version on your dive computer means that Subsurface may not work correctly with it.")
+		.arg(firmwareOnDeviceString)
+		.arg(latestFirmwareAvailable);
+	message += tr("\n\nIf your device uses Bluetooth, enable Bluetooth on the dive computer and do the same preparations as for a logbook download before continuing with the update");
+	response.addButton(tr("Not now"), QMessageBox::RejectRole);
+	response.addButton(tr("Update firmware"), QMessageBox::AcceptRole);
+	response.setText(message);
+	response.setWindowTitle(tr("Firmware upgrade notice"));
+	response.setIcon(QMessageBox::Question);
+	response.setWindowModality(Qt::WindowModal);
+	int ret = response.exec();
+	if (ret == QMessageBox::Accepted) {
+		QString saveFileName = latestFirmwareFileName;
+		saveFileName.replace("firmware", latestFirmwareAvailable);
+		QFileInfo fi(filename);
+		saveFileName = fi.absolutePath().append(QDir::separator()).append(saveFileName);
+		QString storeFirmware = QFileDialog::getSaveFileName(this, tr("Save the downloaded firmware as"),
+			saveFileName, tr("Firmware files") + " (*.hex *.bin)");
+		if (!storeFirmware.isEmpty()) {
+			QProgressDialog *dialog = new QProgressDialog("Updating firmware", "", 0, 100);
+			dialog->setCancelButton(0);
+			dialog->setAutoClose(true);
+
+			ConfigureDiveComputer *config = new ConfigureDiveComputer();
+			connect(config, &ConfigureDiveComputer::message, dialog, &QProgressDialog::setLabelText);
+			connect(config, &ConfigureDiveComputer::error, dialog, &QProgressDialog::setLabelText);
+			connect(config, &ConfigureDiveComputer::progress, dialog, &QProgressDialog::setValue);
+
+			ostcFirmwareCheck->upgradeFirmware(storeFirmware, config);
+
+			return;
+		}
+	}
+
+	accept();
 }
 
 void DownloadFromDCWidget::updateTransportSelection(bool changeSelection)
