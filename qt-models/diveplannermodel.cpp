@@ -1474,7 +1474,6 @@ QVariantMap DivePlannerPointsModel::calculatePlan(const QVariantList &cylindersD
 
 
 	// Populate cylinders from QML data
-	std::vector<int> cylinder_start_pressures;
 	for (const QVariant &cylData : cylindersData) {
 		QVariantMap map = cylData.toMap();
 		cylinder_t newCyl;
@@ -1482,17 +1481,15 @@ QVariantMap DivePlannerPointsModel::calculatePlan(const QVariantList &cylindersD
 		volume_t size = type_info.first;
 		pressure_t pressure = type_info.second;
 		newCyl.type.size = size;
-		newCyl.type.workingpressure = pressure;
 		newCyl.type.description = map["type"].toString().toStdString();
 		QString mix = map["mix"].toString();
 		newCyl.gasmix.o2.permille = parseGasMixO2(mix);
 		newCyl.gasmix.he.permille = parseGasMixHE(mix);
 		sanitize_gasmix(newCyl.gasmix);
 		if (prefs.units.pressure == units::BAR)
-			newCyl.start.mbar = map["pressure"].toInt() * 1000;
+			newCyl.type.workingpressure.mbar = map["pressure"].toInt() * 1000;
 		else
-			newCyl.start.mbar = psi_to_mbar(map["pressure"].toInt());
-		cylinder_start_pressures.push_back(newCyl.start.mbar);
+			newCyl.type.workingpressure.mbar = psi_to_mbar(map["pressure"].toInt());
 		int useIndex = map["use"].toInt();
 		newCyl.cylinder_use = (enum cylinderuse)useIndex;
 		d->cylinders.add(d->cylinders.size(), newCyl);
@@ -1545,12 +1542,6 @@ QVariantMap DivePlannerPointsModel::calculatePlan(const QVariantList &cylindersD
 		deco_state_cache cache;
 		struct deco_state plan_deco_state;
 		plan(&plan_deco_state, diveplan, d, dcNr, 60, cache, true, true);
-		//for each cylinder in dive, reset the start pressure
-		for (size_t i = 0; i < d->cylinders.size(); ++i) {
-			int modified_amount = d->cylinders[i].type.workingpressure.mbar - cylinder_start_pressures[i];
-			d->cylinders[i].end.mbar = d->cylinders[i].end.mbar - modified_amount;
-			d->cylinders[i].start.mbar = d->cylinders[i].start.mbar - modified_amount;
-		}
 		//need a way to determine errors..
 		std::string old_notes = d->notes;
 		planner_error_t error;
