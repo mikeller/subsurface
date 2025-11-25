@@ -84,11 +84,11 @@
 #define SUUNTO_VYPER_ALARM_DEPTH          0x68
 #define SUUNTO_VYPER_CUSTOM_TEXT_LENGTH   30
 
+#define OSTC_FILE "../OSTC-data-dump.bin"
 #ifdef DEBUG_OSTC
 // Fake io to ostc memory banks
 #define hw_ostc_device_eeprom_read local_hw_ostc_device_eeprom_read
 #define hw_ostc_device_eeprom_write local_hw_ostc_device_eeprom_write
-#define OSTC_FILE "../OSTC-data-dump.bin"
 
 // Fake the open function.
 static dc_status_t local_dc_device_open(dc_device_t **out, dc_context_t *context, dc_descriptor_t *descriptor, const char *name)
@@ -115,6 +115,7 @@ static dc_status_t local_hw_ostc_device_eeprom_read(void *ignored, unsigned char
 	return DC_STATUS_SUCCESS;
 }
 
+#endif
 static dc_status_t local_hw_ostc_device_eeprom_write(void *ignored, unsigned char bank, unsigned char data[], unsigned int data_size)
 {
 	FILE *f;
@@ -127,7 +128,6 @@ static dc_status_t local_hw_ostc_device_eeprom_write(void *ignored, unsigned cha
 	return DC_STATUS_SUCCESS;
 }
 
-#endif
 
 static int read_ostc_cf(unsigned char data[], unsigned char cf)
 {
@@ -2227,9 +2227,26 @@ void FirmwareUpdateThread::run()
 		return;
 	}
 	switch (dc_device_get_type(m_data->device)) {
-	case DC_FAMILY_HW_OSTC3:
-		rc = hw_ostc3_device_fwupdate(m_data->device, qPrintable(m_fileName), m_forceUpdate);
+	case DC_FAMILY_HW_OSTC3: {
+		unsigned char data[0x20000];
+		rc = dc_device_read(m_data->device, 0x08000000, data, 0x20000);
+		if (rc != DC_STATUS_SUCCESS)
+			break;
+		local_hw_ostc_device_eeprom_write(m_data->device, 0, data, 0x20000);
+		//unsigned char hwinfo[52] = {
+			//0xac, 0x01, 0xff, 0x02, 0x12, 0x02, 0x0c, 0xf0,
+			//0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x4f,
+			//0x53, 0x54, 0x43, 0x20, 0x34, 0x20, 0x65, 0x6e,
+			//0x64, 0x2d, 0x32, 0x30, 0x31, 0x39, 0x20, 0x68,
+			//0x61, 0x72, 0x64, 0x77, 0x61, 0x72, 0x65, 0x20,
+			//0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20,
+			//0x20, 0x20, 0x20, 0xff
+		//};
+		//rc = hw_ostc3_device_hwinfo_write(m_data->device, hwinfo);
+
+		//rc = hw_ostc3_device_fwupdate(m_data->device, qPrintable(m_fileName), m_forceUpdate);
 		break;
+	}
 	case DC_FAMILY_HW_OSTC:
 		rc = hw_ostc_device_fwupdate(m_data->device, qPrintable(m_fileName));
 		break;
