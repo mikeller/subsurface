@@ -47,6 +47,7 @@
         <file>xslt/shearwater.xslt</file>
         <file>xslt/DiveLog.xslt</file>
         <file>xslt/av1.xslt</file>
+        <file>xslt/inject-profiles.xslt</file>
         <file alias="rate-sac-icon">icons/gas.png</file>
         <file alias="depth-mod-icon">icons/mod.png</file>
         <file alias="pp-he-icon">icons/he.png</file>

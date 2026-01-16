@@ -8,6 +8,8 @@
 #include "core/selection.h"
 #include "core/statistics.h"
 #include "core/qthelper.h"
+#include "core/errorhelper.h"
+#include "core/xmlparams.h"
 #include "profile-widget/profilescene.h"
 
 #include <algorithm>
@@ -19,6 +21,9 @@
 # include <QUrl>
 # include <QFile>
 # include <qlitehtmlwidget.h>
+# include <libxml/HTMLparser.h>
+# include <libxslt/transform.h>
+# include <libxslt/xsltutils.h>
 #else
 #include <QtWebKitWidgets>
 #include <QWebElementCollection>
@@ -294,6 +299,57 @@ void Printer::previewOnePage()
 #ifdef USE_QLITEHTML
 void Printer::Preview(QString content, QPrinter *printer)
 {
+	// Replace dive profile placeholders via XSLT so the transformation is resilient to HTML formatting changes.
+	auto applyProfileXslt = [](const QString &html, const QString &profileDir) -> QString {
+		const QByteArray htmlUtf8 = html.toUtf8();
+		htmlDocPtr doc = htmlReadMemory(htmlUtf8.constData(), htmlUtf8.size(), "preview.html", nullptr,
+					  HTML_PARSE_RECOVER | HTML_PARSE_NODEFDTD | HTML_PARSE_NOERROR | HTML_PARSE_NOWARNING | HTML_PARSE_NONET);
+		if (!doc) {
+			report_error("Failed to parse HTML for profile injection");
+			return html;
+		}
+
+		xsltStylesheetPtr xslt = get_stylesheet("inject-profiles.xslt");
+		if (!xslt) {
+			report_error("Failed to load inject-profiles.xslt stylesheet");
+			xmlFreeDoc(doc);
+			return html;
+		}
+
+		struct xml_params *params = alloc_xml_params();
+		// XSLT parameters need to be XPath expressions, so wrap string values in single quotes
+		QByteArray quotedDir = QString("'%1'").arg(profileDir).toUtf8();
+		xml_params_add(params, "profile-dir", quotedDir.constData());
+		xml_params_add(params, "img-height", "'30%'");
+		xml_params_add(params, "img-width", "'30%'");
+
+		xmlDocPtr transformed = xsltApplyStylesheet(xslt, doc, xml_params_get(params));
+		free_xml_params(params);
+		xmlFreeDoc(doc);
+		if (!transformed) {
+			report_error("Failed to apply profile injection transformation");
+			xsltFreeStylesheet(xslt);
+			return html;
+		}
+
+		xmlChar *out = nullptr;
+		int outLen = 0;
+		if (xsltSaveResultToString(&out, &outLen, transformed, xslt) != 0 || !out) {
+			report_error("Failed to serialize transformed HTML");
+			xmlFreeDoc(transformed);
+			xsltFreeStylesheet(xslt);
+			return html;
+		}
+
+		QString result = QString::fromUtf8(reinterpret_cast<char *>(out), outLen);
+		xmlFree(out);
+		xmlFreeDoc(transformed);
+		xsltFreeStylesheet(xslt);
+		return result;
+	};
+
+	content = applyProfileXslt(content, printDir.path());
+
 	QDialog previewer;
 
 	previewer.setWindowTitle(tr("Print Preview"));
@@ -328,9 +384,6 @@ void Printer::Preview(QString content, QPrinter *printer)
 
 	// QTextStream in(&file);
 	// previewWidget.setHtml(in.readAll());
-
-	QString repl = QString("<img height=\"30%\" width=\"30%\" src=\"file:///%1/dive_\\1.png\">").arg(printDir.path());
-	content.replace(QRegularExpression("<div\\s+class=\"diveProfile\"\\s+id=\"dive_([^\"]*)\"\\s*>\\s*</div>"), repl);
 
 	previewWidget.setUrl(QUrl("file:///", QUrl::TolerantMode));
 	previewWidget.setHtml(content);

@@ -488,7 +488,7 @@ for (( i=0 ; i < ${#BUILDS[@]} ; i++ )) ; do
 	BUILDDIR=${BUILDDIRS[$i]}
 	echo "build $SUBSURFACE_EXECUTABLE in $BUILDDIR"
 
-	if [ "$SUBSURFACE_EXECUTABLE" = "DesktopExecutable" ] && [ "$BUILD_WITH_WEBKIT" = "1" ]; then
+	if [ "$SUBSURFACE_EXECUTABLE" = "DesktopExecutable" ]; then
 		EXTRA_OPTS="-DNO_PRINTING=OFF"
 	else
 		EXTRA_OPTS="-DNO_PRINTING=ON"
