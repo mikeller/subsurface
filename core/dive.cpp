@@ -1739,6 +1739,21 @@ divemode_t get_effective_divemode(const struct divecomputer &dc, const struct cy
 	return divemode;
 }
 
+divemode_t get_divemode(const struct dive &dive)
+{
+	if (dive.dcs.empty())
+		return UNDEF_COMP_TYPE;
+
+	// If we have multiple dive computers, we check if they all have the same divemode, and return 'MULTIPLE_DIVE_MODES' if they differ.
+	divemode_t divemode = dive.dcs[0].divemode;
+	for (const auto &dc: dive.dcs) {
+		if (dc.divemode != divemode)
+			return MULTIPLE_DIVE_MODES;
+	}
+
+	return divemode;
+}
+
 std::tuple<divemode_t, int, const struct gasmix *> get_dive_status_at(const struct dive &dive, const struct divecomputer &dc, int seconds, divemode_loop *loop_mode, gasmix_loop *loop_gas)
 {
 	if (!loop_mode)

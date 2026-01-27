@@ -150,8 +150,8 @@ stats_summary calculate_stats_summary(bool selected_only)
 		out.stats_by_type[0].selection_size++;
 		process_dive(*dp, out.stats_by_type[0]);
 
-		process_dive(*dp, out.stats_by_type[dp->dcs[0].divemode + 1]);
-		out.stats_by_type[dp->dcs[0].divemode + 1].selection_size++;
+		process_dive(*dp, out.stats_by_type[get_divemode(*dp) + 1]);
+		out.stats_by_type[get_divemode(*dp) + 1].selection_size++;
 
 		/* stats_by_depth[0] is all the dives combined */
 		out.stats_by_depth[0].selection_size++;

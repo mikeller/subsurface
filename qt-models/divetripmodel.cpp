@@ -161,9 +161,9 @@ static int countPhotos(const struct dive *d)
 static QString displayDuration(const struct dive *d)
 {
 	if (prefs.units.show_units_table)
-		return get_dive_duration_string(d->duration.seconds, gettextFromC::tr("h"), gettextFromC::tr("min"), "", ":", d->dcs[0].divemode == FREEDIVE);
+		return get_dive_duration_string(d->duration.seconds, gettextFromC::tr("h"), gettextFromC::tr("min"), "", ":", get_divemode(*d) == FREEDIVE);
 	else
-		return get_dive_duration_string(d->duration.seconds, "", "", "", ":", d->dcs[0].divemode == FREEDIVE);
+		return get_dive_duration_string(d->duration.seconds, "", "", "", ":", get_divemode(*d) == FREEDIVE);
 }
 
 static QString displayTemperature(const struct dive *d, bool units)
@@ -362,7 +362,7 @@ QVariant DiveTripModelBase::diveData(const struct dive *d, int column, int role)
 		case NOTES:
 			return QString::fromStdString(d->notes);
 		case DIVEMODE:
-			return QString(divemode_text_ui[(int)d->dcs[0].divemode]);
+			return QString(divemode_text_ui[(int)get_divemode(*d)]);
 		}
 		break;
 	case Qt::DecorationRole:
@@ -1806,6 +1806,6 @@ bool DiveTripModelList::lessThan(const QModelIndex &i1, const QModelIndex &i2) c
 	case NOTES:
 		return lessThanHelper(strCmp(d1->notes, d2->notes), row_diff);
 	case DIVEMODE:
-		return lessThanHelper((int)d1->dcs[0].divemode - (int)d2->dcs[0].divemode, row_diff);
+		return lessThanHelper((int)get_divemode(*d1) - (int)get_divemode(*d2), row_diff);
 	}
 }

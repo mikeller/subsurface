@@ -1402,7 +1402,7 @@ struct DiveModeBinner : public SimpleBinner<DiveModeBinner, IntBin> {
 		return QString(divemode_text_ui[derived_bin(bin).value]);
 	}
 	int to_bin_value(const dive *d) const {
-		int res = (int)d->dcs[0].divemode;
+		int res = (int)get_divemode(*d);
 		return res >= 0 && res < NUM_DIVEMODE ? res : OC;
 	}
 };
@@ -1413,7 +1413,7 @@ struct DiveModeVariable : public StatsVariableTemplate<StatsVariable::Type::Disc
 		return StatsTranslations::tr("Dive mode");
 	}
 	QString diveCategories(const dive *d) const override {
-		int mode = (int)d->dcs[0].divemode;
+		int mode = (int)get_divemode(*d);
 		return mode >= 0 && mode < NUM_DIVEMODE ?
 			QString(divemode_text_ui[mode]) : QString();
 	}

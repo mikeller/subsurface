@@ -149,9 +149,9 @@ void TabDiveInformation::updateProfile()
 	ui->oxygenHeliumText->setText(gaslist);
 
 	ui->diveTimeText->setText(get_dive_duration_string(currentDive->duration.seconds, tr("h"), tr("min"), tr("sec"),
-			" ", currentDive->dcs[0].divemode == FREEDIVE));
+			" ", get_divemode(*currentDive) == FREEDIVE));
 
-	ui->sacText->setText(!currentDive->cylinders.empty() && mean[0].depth.mm > 0 && currentDive->dcs[0].divemode != CCR ? std::move(SACs) : QString());
+	ui->sacText->setText(!currentDive->cylinders.empty() && mean[0].depth.mm > 0 && get_divemode(*currentDive) != CCR ? std::move(SACs) : QString());
 
 	if (currentDive->surface_pressure.mbar == 0) {
 		ui->atmPressVal->clear();			// If no atm pressure for dive then clear text box

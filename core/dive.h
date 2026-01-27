@@ -207,6 +207,8 @@ extern void update_setpoint_events(const struct dive *dive, struct divecomputer 
 
 extern int check_dc_cylinder_use(struct dive &dive, struct divecomputer &dc);
 
+extern divemode_t get_divemode(const struct dive &dive);
+
 /* Make pointers to dive and dive_trip "Qt metatypes" so that they can be passed through
  * QVariants and through QML.
  */

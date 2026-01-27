@@ -371,7 +371,7 @@ static double calculate_airuse(const struct dive &dive)
 	int airuse = 0;
 
 	// SAC for a CCR dive does not make sense.
-	if (dive.dcs[0].divemode == CCR)
+	if (get_divemode(dive) == CCR)
 		return 0.0;
 
 	for (auto [i, cyl]: enumerated_range(dive.cylinders)) {
