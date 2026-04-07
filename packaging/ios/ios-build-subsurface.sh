@@ -98,7 +98,7 @@ if [ "${CURRENT_SHA}" != "${PREVIOUS_SHA}" ]; then
 		"${SUBSURFACE_SOURCE}/libdivecomputer/configure" \
 		--host=arm-apple-darwin --prefix="${IOS_INSTALL_PREFIX}" \
 		--enable-static --disable-shared --enable-examples=no \
-		--without-libusb --without-hidapi
+		--without-libusb --without-hidapi --without-libmtp
 	make && make install
 fi
 

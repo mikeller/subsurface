@@ -72,6 +72,8 @@ if [ ! -f "${PKG_CONFIG_PATH}/libxml-2.0.pc" ]; then
 		-DLIBXML2_WITH_LZMA=OFF \
 		-DLIBXML2_WITH_ZLIB=OFF \
 		-DLIBXML2_WITH_TESTS=OFF \
+		-DLIBXML2_WITH_THREADS=OFF \
+		-DLIBXML2_WITH_TLS=OFF \
 		-DLIBXML2_WITH_PROGRAMS=OFF
 	make && make install
 	cd "${PARENT_DIR}"
@@ -89,7 +91,8 @@ if [ ! -f "${PKG_CONFIG_PATH}/libxslt.pc" ]; then
 		-DCMAKE_INSTALL_PREFIX="${PREFIX}" \
 		-DCMAKE_PREFIX_PATH="${PREFIX}" \
 		-DLibXml2_DIR="${PREFIX}/lib/cmake/libxml2" \
-		-DCMAKE_C_FLAGS="-Wno-nullability-completeness" \
+		-DCMAKE_C_FLAGS="-Wno-nullability-completeness -DHAVE_SYS_TYPES_H=1 -DHAVE_SYS_STAT_H=1" \
+		-DLIBXSLT_WITH_THREADS=OFF \
 		-DLIBXSLT_WITH_PROFILER=OFF \
 		-DLIBXSLT_WITH_PROGRAMS=OFF \
 		-DLIBXSLT_WITH_PYTHON=OFF \
@@ -117,6 +120,20 @@ if [ ! -f "${PKG_CONFIG_PATH}/libzip.pc" ]; then
 		-DCMAKE_DISABLE_FIND_PACKAGE_BZip2=TRUE \
 		-DENABLE_OPENSSL=FALSE \
 		-DENABLE_GNUTLS=FALSE \
+		-DHAVE_FSEEKO=1 \
+		-DHAVE_FTELLO=1 \
+		-DHAVE_SSIZE_T_LIBZIP=1 \
+		-DSIZEOF_OFF_T=8 \
+		-DSIZE_T_LIBZIP=8 \
+		-DZIP_INT8_T="signed char" \
+		-DZIP_UINT8_T="unsigned char" \
+		-DZIP_INT16_T="short" \
+		-DZIP_UINT16_T="unsigned short" \
+		-DZIP_INT32_T="int" \
+		-DZIP_UINT32_T="unsigned int" \
+		-DZIP_INT64_T="long long" \
+		-DZIP_UINT64_T="unsigned long long" \
+		-DCMAKE_C_FLAGS="-DSIZEOF_SIZE_T=8" \
 		-DCMAKE_POLICY_VERSION_MINIMUM=3.5
 	make && make install
 	cd "${PARENT_DIR}"
@@ -140,6 +157,8 @@ if [ ! -f "${PKG_CONFIG_PATH}/libgit2.pc" ]; then
 		-DBUILD_TESTS=OFF \
 		-DBUILD_CLI=OFF \
 		-DBUILD_CLAR=OFF \
+		-DUSE_THREADS=OFF \
+		-DUSE_NSEC=OFF \
 		-DCURL=OFF \
 		-DUSE_SSH=OFF \
 		-DUSE_HTTPS=SecureTransport \
@@ -151,7 +170,7 @@ if [ ! -f "${PKG_CONFIG_PATH}/libgit2.pc" ]; then
 		-DCOREFOUNDATION_FOUND=TRUE \
 		-DCOREFOUNDATION_LIBRARIES="${SDK_DIR}/System/Library/Frameworks/CoreFoundation.framework" \
 		-DCOREFOUNDATION_LDFLAGS="-framework CoreFoundation" \
-		-DCMAKE_C_FLAGS="-Wno-error"
+		-DCMAKE_C_FLAGS="-Wno-error -DGIT_IO_SELECT=1"
 	make && make install
 	# patch away pkg-config dependency on zlib (it's in the SDK)
 	perl -pi -e 's/^(Requires.private:.*)zlib(.*)$/$1 $2/' "${PKG_CONFIG_PATH}/libgit2.pc"
