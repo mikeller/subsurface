@@ -14,6 +14,5 @@ updates:
   - package-ecosystem: "docker"
     directories:
       - "/scripts/docker/android-build-container"
-      - "/scripts/docker/mxe-build-container"
     schedule:
       interval: "weekly"

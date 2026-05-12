@@ -431,23 +431,9 @@ note: this is mainly done to ensure all external dependencies are downloaded and
 2. follow [these instructions](packaging/ios/README.md)
 
 
+### Building Subsurface on Windows with MSVC
 
-### Cross-building Subsurface on Linux for Windows
-
-Subsurface for Windows builds on linux by using the [MXE (M cross environment)](https://github.com/mxe/mxe). The easiest way to do this is to use a Docker container with a pre-built MXE for Subsurface by following [these instructions](packaging/windows/README.md).
-
-
-### Building Subsurface on Windows
-
-This is NOT RECOMMENDED. To the best of our knowledge there is one single
-person who regularly does this. The Subsurface team does not provide support
-for Windows binary build from sources natively under Windows...
-
-The lack of a working package management system for Windows makes it
-really painful to build Subsurface natively under Windows,
-so we don't support that at all.
-
-But if you want to build Subsurface on a Windows system, the docker based [cross-build for Windows](packaging/windows/README.md) works just fine in WSL2 on Windows.
+Follow [these instructions](packaging/windows-msvc/README.md).
 
 
 ### Cross-building Subsurface on Linux for Android
