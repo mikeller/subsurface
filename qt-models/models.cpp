@@ -151,7 +151,7 @@ QVariant LanguageModel::data(const QModelIndex &index, int role) const
 	switch (role) {
 	case Qt::DisplayRole: {
 		QLocale l(currentString.remove("subsurface_").remove(".qm"));
-		return currentString == "English" ? currentString : QString("%1 (%2)").arg(l.languageToString(l.language())).arg(l.countryToString(l.country()));
+		return currentString == "English" ? currentString : QString("%1 (%2)").arg(l.languageToString(l.language())).arg(QLocale::territoryToString(l.territory()));
 	}
 	case Qt::UserRole:
 		return currentString == "English" ? "en_US" : currentString.remove("subsurface_").remove(".qm");

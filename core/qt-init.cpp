@@ -60,7 +60,7 @@ void init_qt_late()
 	QLocale loc;
 
 	// assign en_GB for use in South African locale
-	if (loc.country() == QLocale::SouthAfrica) {
+	if (loc.territory() == QLocale::SouthAfrica) {
 		loc.setDefault(QLocale("en_GB"));
 		loc = QLocale();
 	}
@@ -101,14 +101,14 @@ void init_qt_late()
 	// translation designations. This breaks the way Qt finds fall-back translations.
 	// Changing this now seems rather tedious, so instead we manually create a few
 	// obvious fallbacks
-	QPair<QLocale::Language, QLocale::Country> parents[] = {
+	QPair<QLocale::Language, QLocale::Territory> parents[] = {
 		{ QLocale::German, QLocale::Germany },
 		{ QLocale::Portuguese, QLocale::Portugal },
 		{ QLocale::French, QLocale::France},
 		{ QLocale::Spanish, QLocale::Spain}
 	};
 	for (auto parent: parents) {
-		if (loc.language() == parent.first && loc.country() != parent.second) {
+		if (loc.language() == parent.first && loc.territory() != parent.second) {
 			// first load de_DE so it's used as fall-back
 			QLocale parentLoc = QLocale(parent.first, parent.second);
 			if (parentLanguageTranslator.load(parentLoc, "subsurface", "_") ||
