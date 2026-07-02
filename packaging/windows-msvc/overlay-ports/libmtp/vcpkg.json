@@ -5,28 +5,10 @@
   "description": "A library to access MTP (Media Transfer Protocol) devices",
   "homepage": "https://sourceforge.net/projects/libmtp/",
   "license": "LGPL-2.1-or-later",
-  "supports": "(!windows | mingw) & !uwp & !android",
+  "supports": "windows & !uwp",
   "dependencies": [
     {
-      "name": "gettext",
-      "host": true
-    },
-    {
-      "name": "libmtp",
-      "host": true,
-      "platform": "android"
-    },
-    "libusb",
-    {
       "name": "vcpkg-cmake",
-      "host": true
-    },
-    {
-      "name": "vcpkg-cmake-config",
-      "host": true
-    },
-    {
-      "name": "vcpkg-make",
       "host": true
     }
   ]

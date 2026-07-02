@@ -63,36 +63,25 @@ file(WRITE ${CMAKE_CURRENT_SOURCE_DIR}/src/libmtp.h "
 
 add_library(libmtp STATIC ${SOURCES})
 
-target_include_directories(libmtp PUBLIC 
+target_include_directories(libmtp PRIVATE
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>
     $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}>
-    $<BUILD_INTERFACE:${GLOBAL_DEPENDENCIES_DIR}/include>
-    $<INSTALL_INTERFACE:include>
 )
 
 target_link_libraries(libmtp PRIVATE 
-    "${GLOBAL_DEPENDENCIES_DIR}/lib/libusb-1.0.lib"
     ws2_32
 )
 
-install(TARGETS libmtp EXPORT libmtp-targets ARCHIVE DESTINATION lib)
+install(TARGETS libmtp ARCHIVE DESTINATION lib)
 install(FILES ${CMAKE_CURRENT_BINARY_DIR}/libmtp_generated.h DESTINATION include RENAME libmtp.h)
-install(EXPORT libmtp-targets FILE libmtp-targets.cmake NAMESPACE unofficial::libmtp:: DESTINATION share/libmtp)
-file(WRITE ${CMAKE_CURRENT_BINARY_DIR}/libmtp-config.cmake "
-include(\"\${CMAKE_CURRENT_LIST_DIR}/libmtp-targets.cmake\")
-")
-install(FILES ${CMAKE_CURRENT_BINARY_DIR}/libmtp-config.cmake DESTINATION share/libmtp)
 ]])
 
 vcpkg_cmake_configure(
     SOURCE_PATH "${SOURCE_PATH}"
-    OPTIONS
-        "-DGLOBAL_DEPENDENCIES_DIR=${CURRENT_INSTALLED_DIR}"
 )
 
 vcpkg_cmake_install()
-vcpkg_cmake_config_fixup()
 
 file(REMOVE_RECURSE "${CURRENT_PACKAGES_DIR}/debug/include")
 file(INSTALL "${SOURCE_PATH}/COPYING" DESTINATION "${CURRENT_PACKAGES_DIR}/share/${PORT}" RENAME copyright)

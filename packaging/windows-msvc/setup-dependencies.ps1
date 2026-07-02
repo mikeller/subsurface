@@ -83,7 +83,7 @@ Write-Host ""
 
 # Install dependencies
 $overlayPorts = Join-Path $PSScriptRoot "overlay-ports"
-$args = @("install") + $dependencies + @("--triplet", $Triplet) + @("--allow-unsupported") + @("--overlay-ports=$overlayPorts")
+$args = @("install") + $dependencies + @("--triplet", $Triplet) + @("--overlay-ports=$overlayPorts")
 Write-Host "Running: vcpkg $($args -join ' ')" -ForegroundColor Yellow
 Write-Host ""
 
