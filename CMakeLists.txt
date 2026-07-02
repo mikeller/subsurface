@@ -243,7 +243,19 @@ if(NOT ANDROID AND NOT CMAKE_SYSTEM_NAME STREQUAL "iOS")
 			set(LIBRAW_FOUND TRUE)
 			LIST(APPEND SUBSURFACE_LINK_LIBRARIES libraw::raw_r)
 		endif()
-		# libmtp is not available via vcpkg, skip for now
+		find_path(LIBMTP_INCLUDE_DIR libmtp.h
+			PATHS "${_VCPKG_PREFIX}/include"
+			NO_DEFAULT_PATH)
+		find_library(LIBMTP_LIBRARY
+			NAMES libmtp mtp
+			PATHS "${_VCPKG_PREFIX}/lib"
+			NO_DEFAULT_PATH)
+		if(LIBMTP_INCLUDE_DIR AND LIBMTP_LIBRARY)
+			set(LIBMTP_FOUND TRUE)
+			set(LIBMTP_LIBRARIES "${LIBMTP_LIBRARY}")
+			include_directories(${LIBMTP_INCLUDE_DIR})
+			message(STATUS "libmtp found: ${LIBMTP_LIBRARY}")
+		endif()
 	else()
 		pkg_config_library(LIBUSB libusb-1.0 QUIET)
 		pkg_config_library(LIBMTP libmtp QUIET)

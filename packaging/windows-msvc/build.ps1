@@ -299,10 +299,11 @@ if (-not $SkipLibdivecomputer) {
     }
 
     # Set up include/lib paths for vcpkg
+    $env:VCPKG_ROOT = $VcpkgRoot
     $env:INCLUDE = "$vcpkgInstalled\include;$env:INCLUDE"
     $env:LIB = "$vcpkgInstalled\lib;$env:LIB"
 
-    # Suppress deprecation warnings
+    # Suppress deprecation warnings.
     $env:CL = "/WX- /wd4996 /D_CRT_NONSTDC_NO_WARNINGS /D_CRT_SECURE_NO_WARNINGS"
 
     Write-Host "Building with msbuild..."

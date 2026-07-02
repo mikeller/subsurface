@@ -13,6 +13,16 @@ file(WRITE "${SOURCE_PATH}/src/msvc_stub.c" [[
 // Expose the core foundational hardware lifecycle symbol definitions expected by Subsurface
 void LIBMTP_Init(void) {}
 
+LIBMTP_error_number_t LIBMTP_Detect_Raw_Devices(LIBMTP_raw_device_t **devices, int *numdevs) {
+    if (devices) *devices = (void*)0;
+    if (numdevs) *numdevs = 0;
+    return LIBMTP_ERROR_NO_DEVICE_ATTACHED;
+}
+
+LIBMTP_mtpdevice_t *LIBMTP_Open_Raw_Device_Uncached(LIBMTP_raw_device_t *device) {
+    return (void*)0;
+}
+
 LIBMTP_mtpdevice_t *LIBMTP_Get_First_Device(void) { 
     return (void*)0; 
 }
@@ -29,11 +39,21 @@ LIBMTP_file_t *LIBMTP_Get_Filelisting(LIBMTP_mtpdevice_t *device) {
     return (void*)0; 
 }
 
+LIBMTP_file_t *LIBMTP_Get_Files_And_Folders(LIBMTP_mtpdevice_t *device, uint32_t storage_id, uint32_t parent_id) {
+    return (void*)0;
+}
+
 void LIBMTP_destroy_file_t(LIBMTP_file_t *file) {}
+
+int LIBMTP_Get_File_To_Handler(LIBMTP_mtpdevice_t *device, uint32_t id, MTPDataPutFunc put_func, void *priv, LIBMTP_progressfunc_t cb, const void *data) {
+    return -1;
+}
 
 int LIBMTP_Get_File_To_File(LIBMTP_mtpdevice_t *device, uint32_t id, const char *path, LIBMTP_progressfunc_t cb, const void *data) {
     return -1;
 }
+
+void LIBMTP_Dump_Errorstack(LIBMTP_mtpdevice_t *device) {}
 
 int LIBMTP_Update_File_Metadata(LIBMTP_mtpdevice_t *device, LIBMTP_file_t const *file) {
     return -1;
