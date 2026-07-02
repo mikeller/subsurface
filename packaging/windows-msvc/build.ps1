@@ -307,7 +307,7 @@ if (-not $SkipLibdivecomputer) {
     $env:CL = "/WX- /wd4996 /D_CRT_NONSTDC_NO_WARNINGS /D_CRT_SECURE_NO_WARNINGS"
 
     Write-Host "Building with msbuild..."
-    msbuild -m -p:Platform=x64 -p:Configuration=$BuildType $libdcProj
+    msbuild -m -p:Platform=x64 -p:Configuration=$BuildType -p:EnableLibmtp=true $libdcProj
 
     if ($LASTEXITCODE -ne 0) {
         Write-Error "libdivecomputer build failed"
