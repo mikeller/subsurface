@@ -64,10 +64,11 @@ file(WRITE ${CMAKE_CURRENT_SOURCE_DIR}/src/libmtp.h "
 add_library(libmtp STATIC ${SOURCES})
 
 target_include_directories(libmtp PUBLIC 
-    ${CMAKE_CURRENT_SOURCE_DIR}
-    ${CMAKE_CURRENT_SOURCE_DIR}/src
-    ${CMAKE_CURRENT_BINARY_DIR}
-    "${GLOBAL_DEPENDENCIES_DIR}/include"
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}>
+    $<BUILD_INTERFACE:${GLOBAL_DEPENDENCIES_DIR}/include>
+    $<INSTALL_INTERFACE:include>
 )
 
 target_link_libraries(libmtp PRIVATE 
@@ -77,6 +78,11 @@ target_link_libraries(libmtp PRIVATE
 
 install(TARGETS libmtp EXPORT libmtp-targets ARCHIVE DESTINATION lib)
 install(FILES ${CMAKE_CURRENT_BINARY_DIR}/libmtp_generated.h DESTINATION include RENAME libmtp.h)
+install(EXPORT libmtp-targets FILE libmtp-targets.cmake NAMESPACE unofficial::libmtp:: DESTINATION share/libmtp)
+file(WRITE ${CMAKE_CURRENT_BINARY_DIR}/libmtp-config.cmake "
+include(\"\${CMAKE_CURRENT_LIST_DIR}/libmtp-targets.cmake\")
+")
+install(FILES ${CMAKE_CURRENT_BINARY_DIR}/libmtp-config.cmake DESTINATION share/libmtp)
 ]])
 
 vcpkg_cmake_configure(

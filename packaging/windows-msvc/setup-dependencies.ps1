@@ -82,7 +82,8 @@ $dependencies | ForEach-Object { Write-Host "  - $_" }
 Write-Host ""
 
 # Install dependencies
-$args = @("install") + $dependencies + @("--triplet", $Triplet) + @("--allow-unsupported") + @("--overlay-ports=.\packaging\windows-msvc\overlay-ports")
+$overlayPorts = Join-Path $PSScriptRoot "overlay-ports"
+$args = @("install") + $dependencies + @("--triplet", $Triplet) + @("--allow-unsupported") + @("--overlay-ports=$overlayPorts")
 Write-Host "Running: vcpkg $($args -join ' ')" -ForegroundColor Yellow
 Write-Host ""
 
