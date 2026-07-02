@@ -73,7 +73,8 @@ $dependencies = @(
     "openssl",
     "libusb",
     "hidapi",
-    "libraw"
+    "libraw",
+    "libmtp"
 )
 
 Write-Host "Installing dependencies:" -ForegroundColor Green
@@ -81,7 +82,7 @@ $dependencies | ForEach-Object { Write-Host "  - $_" }
 Write-Host ""
 
 # Install dependencies
-$args = @("install") + $dependencies + @("--triplet", $Triplet)
+$args = @("install") + $dependencies + @("--triplet", $Triplet) + @("--allow-unsupported") + @("--overlay-ports=.\packaging\windows-msvc\overlay-ports")
 Write-Host "Running: vcpkg $($args -join ' ')" -ForegroundColor Yellow
 Write-Host ""
 
