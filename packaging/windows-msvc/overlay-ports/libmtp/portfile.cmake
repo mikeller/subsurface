@@ -5,103 +5,17 @@ vcpkg_from_github(
     SHA512 8518d1c201b24aefbb81ca4cffe8a9ab01c3b120f2dece954983ed57c2934b71fcf95cefa3591276812088c3040781e438d8cc6af35e75a66615f63e9632173f
 )
 
-# 1. Generate a clean, 100% MSVC-compatible stub implementation for the core MTP symbols
-file(WRITE "${SOURCE_PATH}/src/msvc_stub.c" [[
-#include <stdlib.h>
-#include "libmtp.h"
+# Replace upstream build system and source with an MSVC-compatible stub.
+# libmtp itself does not build with MSVC; the stub provides the symbols that
+# Subsurface / libdivecomputer need, returning "no device" on all calls.
+file(COPY "${CMAKE_CURRENT_LIST_DIR}/CMakeLists.txt" DESTINATION "${SOURCE_PATH}")
+file(COPY "${CMAKE_CURRENT_LIST_DIR}/msvc_stub.c"   DESTINATION "${SOURCE_PATH}/src")
 
-// Expose the core foundational hardware lifecycle symbol definitions expected by Subsurface
-void LIBMTP_Init(void) {}
-
-LIBMTP_error_number_t LIBMTP_Detect_Raw_Devices(LIBMTP_raw_device_t **devices, int *numdevs) {
-    if (devices) *devices = (void*)0;
-    if (numdevs) *numdevs = 0;
-    return LIBMTP_ERROR_NO_DEVICE_ATTACHED;
-}
-
-LIBMTP_mtpdevice_t *LIBMTP_Open_Raw_Device_Uncached(LIBMTP_raw_device_t *device) {
-    return (void*)0;
-}
-
-LIBMTP_mtpdevice_t *LIBMTP_Get_First_Device(void) { 
-    return (void*)0; 
-}
-
-void LIBMTP_Release_Device(LIBMTP_mtpdevice_t *device) {}
-
-int LIBMTP_Get_Supported_Filetypes(LIBMTP_mtpdevice_t *device, uint16_t **filetypes, uint16_t *len) {
-    if (filetypes) *filetypes = (void*)0;
-    if (len) *len = 0;
-    return 0;
-}
-
-LIBMTP_file_t *LIBMTP_Get_Filelisting(LIBMTP_mtpdevice_t *device) { 
-    return (void*)0; 
-}
-
-LIBMTP_file_t *LIBMTP_Get_Files_And_Folders(LIBMTP_mtpdevice_t *device, uint32_t storage_id, uint32_t parent_id) {
-    return (void*)0;
-}
-
-void LIBMTP_destroy_file_t(LIBMTP_file_t *file) {}
-
-int LIBMTP_Get_File_To_Handler(LIBMTP_mtpdevice_t *device, uint32_t id, MTPDataPutFunc put_func, void *priv, LIBMTP_progressfunc_t cb, const void *data) {
-    return -1;
-}
-
-int LIBMTP_Get_File_To_File(LIBMTP_mtpdevice_t *device, uint32_t id, const char *path, LIBMTP_progressfunc_t cb, const void *data) {
-    return -1;
-}
-
-void LIBMTP_Dump_Errorstack(LIBMTP_mtpdevice_t *device) {}
-
-int LIBMTP_Update_File_Metadata(LIBMTP_mtpdevice_t *device, LIBMTP_file_t const *file) {
-    return -1;
-}
-]])
-
-# 2. Generate our custom build script mapping exclusively to our pristine compiler stub
-file(WRITE "${SOURCE_PATH}/CMakeLists.txt" [[
-cmake_minimum_required(VERSION 3.15)
-project(libmtp C)
-
-add_compile_definitions(_CRT_SECURE_NO_WARNINGS)
-add_compile_definitions(WIN32_LEAN_AND_MEAN)
-
-set(SOURCES src/msvc_stub.c)
-
-set(LIBMTP_VERSION_STRING "1.1.22")
-configure_file(src/libmtp.h.in ${CMAKE_CURRENT_BINARY_DIR}/libmtp_generated.h @ONLY)
-
-# Forward proxy mapping to present a clean standalone inclusion layout
-file(WRITE ${CMAKE_CURRENT_SOURCE_DIR}/src/libmtp.h "
-#ifndef LIBMTP_H_MSVC_PROXY
-#define LIBMTP_H_MSVC_PROXY
-#include \"libmtp_generated.h\"
-#endif
-")
-
-add_library(libmtp STATIC ${SOURCES})
-
-target_include_directories(libmtp PRIVATE
-    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
-    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>
-    $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}>
-)
-
-target_link_libraries(libmtp PRIVATE 
-    ws2_32
-)
-
-install(TARGETS libmtp ARCHIVE DESTINATION lib)
-install(FILES ${CMAKE_CURRENT_BINARY_DIR}/libmtp_generated.h DESTINATION include RENAME libmtp.h)
-]])
-
-vcpkg_cmake_configure(
-    SOURCE_PATH "${SOURCE_PATH}"
-)
+vcpkg_cmake_configure(SOURCE_PATH "${SOURCE_PATH}")
 
 vcpkg_cmake_install()
 
 file(REMOVE_RECURSE "${CURRENT_PACKAGES_DIR}/debug/include")
-file(INSTALL "${SOURCE_PATH}/COPYING" DESTINATION "${CURRENT_PACKAGES_DIR}/share/${PORT}" RENAME copyright)
+file(INSTALL "${SOURCE_PATH}/COPYING"
+     DESTINATION "${CURRENT_PACKAGES_DIR}/share/${PORT}"
+     RENAME copyright)
