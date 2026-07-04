@@ -17,7 +17,6 @@
 
 namespace {
 
-constexpr uint16_t garmin_vendor_id = 0x091e;
 constexpr uint32_t root_parent_id = 0xffffffffu;
 
 struct ComInit {
@@ -100,6 +99,7 @@ struct DeviceInfo {
 	std::wstring pnp_id;
 	std::wstring name;
 	std::wstring manufacturer;
+	uint16_t vendor_id = 0;
 	uint16_t product_id = 0;
 };
 
@@ -120,11 +120,6 @@ std::wstring to_lower(std::wstring value)
 	std::transform(value.begin(), value.end(), value.begin(),
 		[](wchar_t ch) { return static_cast<wchar_t>(std::towlower(ch)); });
 	return value;
-}
-
-bool contains(const std::wstring &haystack, const wchar_t *needle)
-{
-	return to_lower(haystack).find(needle) != std::wstring::npos;
 }
 
 char *copy_utf8(const std::wstring &value)
@@ -197,33 +192,6 @@ bool parse_hex_after(const std::wstring &text, const wchar_t *marker, uint16_t *
 	return true;
 }
 
-uint16_t garmin_model_product_id(const std::wstring &name)
-{
-	std::wstring lower = to_lower(name);
-	if (lower.find(L"descent") == std::wstring::npos)
-		return 0;
-	if (lower.find(L"x50") != std::wstring::npos)
-		return 4518 | 0x4000;
-	if (lower.find(L"mk3") != std::wstring::npos)
-		return 4222 | 0x4000;
-	if (lower.find(L"mk2 s") != std::wstring::npos || lower.find(L"mk2s") != std::wstring::npos)
-		return 3542 | 0x4000;
-	if (lower.find(L"mk2") != std::wstring::npos)
-		return 3258 | 0x4000;
-	if (lower.find(L"g2") != std::wstring::npos)
-		return 4588 | 0x4000;
-	if (lower.find(L"g1") != std::wstring::npos)
-		return 4005 | 0x4000;
-	return 0;
-}
-
-bool is_garmin_device(const DeviceInfo &info)
-{
-	if (contains(info.pnp_id, L"vid_091e"))
-		return true;
-	return contains(info.manufacturer, L"garmin") || contains(info.name, L"garmin") || contains(info.name, L"descent");
-}
-
 bool enumerate_devices(std::vector<DeviceInfo> *devices)
 {
 	ComInit com;
@@ -257,17 +225,12 @@ bool enumerate_devices(std::vector<DeviceInfo> *devices)
 
 		uint16_t vid = 0;
 		uint16_t pid = 0;
-		if (parse_hex_after(info.pnp_id, L"vid_", &vid) && vid != garmin_vendor_id)
-			continue;
-		parse_hex_after(info.pnp_id, L"pid_", &pid);
-
-		if (!is_garmin_device(info))
+		if (!parse_hex_after(info.pnp_id, L"vid_", &vid) ||
+			!parse_hex_after(info.pnp_id, L"pid_", &pid))
 			continue;
 
-		info.product_id = pid ? pid : garmin_model_product_id(info.name);
-		if (info.product_id == 0)
-			continue;
-
+		info.vendor_id = vid;
+		info.product_id = pid;
 		devices->push_back(std::move(info));
 	}
 
@@ -424,7 +387,7 @@ LIBMTP_devicestorage_t *append_storage(DeviceState *state, LIBMTP_devicestorage_
 		return nullptr;
 
 	storage->id = id_for_object(state, object_id);
-	storage->StorageDescription = copy_utf8(name.empty() ? L"Garmin MTP storage" : name);
+	storage->StorageDescription = copy_utf8(name.empty() ? L"WPD MTP storage" : name);
 	if (*tail) {
 		(*tail)->next = storage;
 		storage->prev = *tail;
@@ -527,9 +490,9 @@ LIBMTP_error_number_t LIBMTP_Detect_Raw_Devices(LIBMTP_raw_device_t **devices, i
 		return LIBMTP_ERROR_MEMORY_ALLOCATION;
 
 	for (size_t i = 0; i < found.size(); ++i) {
-		raw[i].device_entry.vendor = copy_utf8(found[i].manufacturer.empty() ? L"Garmin" : found[i].manufacturer);
-		raw[i].device_entry.vendor_id = garmin_vendor_id;
-		raw[i].device_entry.product = copy_utf8(found[i].name.empty() ? L"Garmin MTP device" : found[i].name);
+		raw[i].device_entry.vendor = copy_utf8(found[i].manufacturer);
+		raw[i].device_entry.vendor_id = found[i].vendor_id;
+		raw[i].device_entry.product = copy_utf8(found[i].name);
 		raw[i].device_entry.product_id = found[i].product_id;
 		raw[i].bus_location = static_cast<uint32_t>(i + 1);
 		raw[i].devnum = static_cast<uint8_t>(i + 1);

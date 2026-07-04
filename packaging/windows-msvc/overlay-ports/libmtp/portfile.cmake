@@ -7,7 +7,7 @@ vcpkg_from_github(
 
 # Replace upstream build system and source with an MSVC-compatible libmtp ABI
 # shim backed by Windows Portable Devices. Upstream libmtp's Windows support is
-# MinGW/libusb-oriented; Subsurface only needs a narrow Garmin read-only subset.
+# MinGW/libusb-oriented; Subsurface only needs a narrow read-only subset.
 file(COPY "${CMAKE_CURRENT_LIST_DIR}/CMakeLists.txt" DESTINATION "${SOURCE_PATH}")
 file(COPY "${CMAKE_CURRENT_LIST_DIR}/msvc_wpd.cpp" DESTINATION "${SOURCE_PATH}/src")
 
