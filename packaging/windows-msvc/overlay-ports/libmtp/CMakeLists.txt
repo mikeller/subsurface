@@ -8,20 +8,10 @@ set(LIBMTP_VERSION_STRING "1.1.22")
 configure_file(src/libmtp.h.in "${CMAKE_CURRENT_BINARY_DIR}/libmtp.h" @ONLY)
 if(MSVC)
     file(READ "${CMAKE_CURRENT_BINARY_DIR}/libmtp.h" LIBMTP_HEADER)
-    string(REPLACE [=[
-/*
- * Types that do not exist in Windows
- * sys/types.h, but they exist in mingw32
- * sys/types.h.
- */
-typedef char int8_t;
-typedef unsigned char uint8_t;
-typedef __int16 int16_t;
-typedef unsigned __int16 uint16_t;
-typedef __int32 int32_t;
-typedef unsigned __int32 uint32_t;
-typedef unsigned __int64 uint64_t;
-]=] "" LIBMTP_HEADER "${LIBMTP_HEADER}")
+    foreach(_type int8_t uint8_t int16_t uint16_t int32_t uint32_t uint64_t)
+        string(REGEX REPLACE "typedef[^;]*[ *]${_type};[\r\n]*" "" LIBMTP_HEADER "${LIBMTP_HEADER}")
+    endforeach()
+
     file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/libmtp.h" "${LIBMTP_HEADER}")
 endif()
 

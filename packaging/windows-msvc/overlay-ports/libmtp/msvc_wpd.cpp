@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <cstdlib>
 #include <cstring>
+#include <cwchar>
 #include <cwctype>
 #include <map>
 #include <memory>
@@ -23,8 +24,15 @@ struct ComInit {
 	ComInit()
 	{
 		hr = CoInitializeEx(nullptr, COINIT_MULTITHREADED);
+		initialized = SUCCEEDED(hr);
 		if (hr == RPC_E_CHANGED_MODE)
 			hr = S_OK;
+	}
+
+	~ComInit()
+	{
+		if (initialized)
+			CoUninitialize();
 	}
 
 	bool ok() const
@@ -33,6 +41,7 @@ struct ComInit {
 	}
 
 	HRESULT hr = E_FAIL;
+	bool initialized = false;
 };
 
 template <typename T>
@@ -104,6 +113,7 @@ struct DeviceInfo {
 };
 
 struct DeviceState {
+	ComInit com;
 	ComPtr<IPortableDevice> device;
 	ComPtr<IPortableDeviceContent> content;
 	uint32_t next_id = 2;
@@ -112,8 +122,8 @@ struct DeviceState {
 };
 
 std::mutex global_mutex;
-std::vector<DeviceInfo> detected_devices;
-std::map<LIBMTP_mtpdevice_t *, std::unique_ptr<DeviceState>> device_states;
+std::map<uint32_t, DeviceInfo> detected_devices;
+std::map<LIBMTP_mtpdevice_t *, std::shared_ptr<DeviceState>> device_states;
 
 std::wstring to_lower(std::wstring value)
 {
@@ -135,7 +145,10 @@ char *copy_utf8(const std::wstring &value)
 	if (!out)
 		return nullptr;
 
-	WideCharToMultiByte(CP_UTF8, 0, value.c_str(), -1, out, len, nullptr, nullptr);
+	if (WideCharToMultiByte(CP_UTF8, 0, value.c_str(), -1, out, len, nullptr, nullptr) == 0) {
+		std::free(out);
+		return nullptr;
+	}
 	return out;
 }
 
@@ -192,6 +205,16 @@ bool parse_hex_after(const std::wstring &text, const wchar_t *marker, uint16_t *
 	return true;
 }
 
+uint32_t stable_device_id(const std::wstring &pnp_id)
+{
+	uint32_t hash = 2166136261u;
+	for (wchar_t ch : pnp_id) {
+		hash ^= static_cast<uint32_t>(std::towlower(ch));
+		hash *= 16777619u;
+	}
+	return hash ? hash : 1u;
+}
+
 bool enumerate_devices(std::vector<DeviceInfo> *devices)
 {
 	ComInit com;
@@ -244,20 +267,26 @@ bool make_client_info(ComPtr<IPortableDeviceValues> *values)
 	if (FAILED(hr))
 		return false;
 
-	(*values)->SetStringValue(WPD_CLIENT_NAME, L"Subsurface");
-	(*values)->SetUnsignedIntegerValue(WPD_CLIENT_MAJOR_VERSION, 1);
-	(*values)->SetUnsignedIntegerValue(WPD_CLIENT_MINOR_VERSION, 0);
-	(*values)->SetUnsignedIntegerValue(WPD_CLIENT_REVISION, 0);
-	(*values)->SetUnsignedIntegerValue(WPD_CLIENT_SECURITY_QUALITY_OF_SERVICE, SECURITY_IMPERSONATION);
+	hr = (*values)->SetStringValue(WPD_CLIENT_NAME, L"Subsurface");
+	if (FAILED(hr))
+		return false;
+	hr = (*values)->SetUnsignedIntegerValue(WPD_CLIENT_MAJOR_VERSION, 1);
+	if (FAILED(hr))
+		return false;
+	hr = (*values)->SetUnsignedIntegerValue(WPD_CLIENT_MINOR_VERSION, 0);
+	if (FAILED(hr))
+		return false;
+	hr = (*values)->SetUnsignedIntegerValue(WPD_CLIENT_REVISION, 0);
+	if (FAILED(hr))
+		return false;
+	hr = (*values)->SetUnsignedIntegerValue(WPD_CLIENT_SECURITY_QUALITY_OF_SERVICE, SECURITY_IMPERSONATION);
+	if (FAILED(hr))
+		return false;
 	return true;
 }
 
 bool open_wpd_device(const DeviceInfo &info, DeviceState *state)
 {
-	ComInit com;
-	if (!com.ok())
-		return false;
-
 	ComPtr<IPortableDeviceValues> client_info;
 	if (!make_client_info(&client_info))
 		return false;
@@ -442,11 +471,48 @@ LIBMTP_devicestorage_t *build_storage_list(DeviceState *state, const std::wstrin
 	return head;
 }
 
-DeviceState *state_for_device(LIBMTP_mtpdevice_t *device)
+std::shared_ptr<DeviceState> state_for_device(LIBMTP_mtpdevice_t *device)
 {
 	std::lock_guard<std::mutex> lock(global_mutex);
 	auto it = device_states.find(device);
-	return it == device_states.end() ? nullptr : it->second.get();
+	return it == device_states.end() ? nullptr : it->second;
+}
+
+void append_file_node(LIBMTP_file_t ***tail, LIBMTP_file_t *file)
+{
+	**tail = file;
+	*tail = &file->next;
+}
+
+void append_children(DeviceState *state, IPortableDeviceProperties *properties,
+	uint32_t storage_id, uint32_t parent_id, const std::wstring &parent_object,
+	bool recursive, LIBMTP_file_t ***tail)
+{
+	ComPtr<IEnumPortableDeviceObjectIDs> enum_objects;
+	if (FAILED(state->content->EnumObjects(0, parent_object.c_str(), nullptr, enum_objects.put())))
+		return;
+
+	for (;;) {
+		LPWSTR object_ids[16] = {};
+		DWORD fetched = 0;
+		HRESULT hr = enum_objects->Next(16, object_ids, &fetched);
+		if (FAILED(hr) || fetched == 0)
+			break;
+
+		for (DWORD i = 0; i < fetched; ++i) {
+			std::wstring object_id = co_string_to_wstring(object_ids[i]);
+			LIBMTP_file_t *file = make_file(state, properties, object_id, storage_id, parent_id);
+			if (!file)
+				continue;
+
+			const bool is_folder = file->filetype == LIBMTP_FILETYPE_FOLDER;
+			const uint32_t child_parent_id = file->item_id;
+			append_file_node(tail, file);
+
+			if (recursive && is_folder)
+				append_children(state, properties, storage_id, child_parent_id, object_id, true, tail);
+		}
+	}
 }
 
 void free_storage(LIBMTP_devicestorage_t *storage)
@@ -466,7 +532,7 @@ extern "C" {
 
 void LIBMTP_Init(void)
 {
-	ComInit com;
+	[[maybe_unused]] ComInit com;
 }
 
 LIBMTP_error_number_t LIBMTP_Detect_Raw_Devices(LIBMTP_raw_device_t **devices, int *numdevs)
@@ -479,32 +545,45 @@ LIBMTP_error_number_t LIBMTP_Detect_Raw_Devices(LIBMTP_raw_device_t **devices, i
 		return LIBMTP_ERROR_GENERAL;
 
 	std::vector<DeviceInfo> found;
-	if (!enumerate_devices(&found))
+	if (!enumerate_devices(&found)) {
+		std::lock_guard<std::mutex> lock(global_mutex);
+		detected_devices.clear();
 		return LIBMTP_ERROR_CONNECTING;
-	if (found.empty())
+	}
+	if (found.empty()) {
+		std::lock_guard<std::mutex> lock(global_mutex);
+		detected_devices.clear();
 		return LIBMTP_ERROR_NO_DEVICE_ATTACHED;
+	}
 
 	LIBMTP_raw_device_t *raw = static_cast<LIBMTP_raw_device_t *>(
 		std::calloc(found.size(), sizeof(LIBMTP_raw_device_t)));
 	if (!raw)
 		return LIBMTP_ERROR_MEMORY_ALLOCATION;
 
-	for (size_t i = 0; i < found.size(); ++i) {
-		raw[i].device_entry.vendor = copy_utf8(found[i].manufacturer);
-		raw[i].device_entry.vendor_id = found[i].vendor_id;
-		raw[i].device_entry.product = copy_utf8(found[i].name);
-		raw[i].device_entry.product_id = found[i].product_id;
-		raw[i].bus_location = static_cast<uint32_t>(i + 1);
-		raw[i].devnum = static_cast<uint8_t>(i + 1);
-	}
-
 	{
 		std::lock_guard<std::mutex> lock(global_mutex);
-		detected_devices = std::move(found);
+		detected_devices.clear();
+		for (size_t i = 0; i < found.size(); ++i) {
+			raw[i].device_entry.vendor_id = found[i].vendor_id;
+			raw[i].device_entry.product_id = found[i].product_id;
+			uint32_t device_id = stable_device_id(found[i].pnp_id);
+			while (true) {
+				auto existing = detected_devices.find(device_id);
+				if (existing == detected_devices.end() || existing->second.pnp_id == found[i].pnp_id)
+					break;
+				++device_id;
+				if (device_id == 0)
+					device_id = 1;
+			}
+			detected_devices[device_id] = found[i];
+			raw[i].bus_location = device_id;
+			raw[i].devnum = static_cast<uint8_t>(i + 1);
+		}
 	}
 
 	*devices = raw;
-	*numdevs = static_cast<int>(detected_devices.size());
+	*numdevs = static_cast<int>(found.size());
 	return LIBMTP_ERROR_NONE;
 }
 
@@ -516,13 +595,15 @@ LIBMTP_mtpdevice_t *LIBMTP_Open_Raw_Device_Uncached(LIBMTP_raw_device_t *raw_dev
 	DeviceInfo info;
 	{
 		std::lock_guard<std::mutex> lock(global_mutex);
-		size_t index = raw_device->bus_location - 1;
-		if (index >= detected_devices.size())
+		auto it = detected_devices.find(raw_device->bus_location);
+		if (it == detected_devices.end())
 			return nullptr;
-		info = detected_devices[index];
+		info = it->second;
 	}
 
-	auto state = std::make_unique<DeviceState>();
+	auto state = std::make_shared<DeviceState>();
+	if (!state->com.ok())
+		return nullptr;
 	if (!open_wpd_device(info, state.get()))
 		return nullptr;
 
@@ -550,10 +631,6 @@ LIBMTP_mtpdevice_t *LIBMTP_Get_First_Device(void)
 	if (LIBMTP_Detect_Raw_Devices(&devices, &count) != LIBMTP_ERROR_NONE || count == 0)
 		return nullptr;
 	LIBMTP_mtpdevice_t *device = LIBMTP_Open_Raw_Device_Uncached(&devices[0]);
-	for (int i = 0; i < count; ++i) {
-		std::free(devices[i].device_entry.vendor);
-		std::free(devices[i].device_entry.product);
-	}
 	std::free(devices);
 	return device;
 }
@@ -581,17 +658,40 @@ int LIBMTP_Get_Supported_Filetypes(LIBMTP_mtpdevice_t *, uint16_t **filetypes, u
 
 LIBMTP_file_t *LIBMTP_Get_Filelisting(LIBMTP_mtpdevice_t *device)
 {
-	return LIBMTP_Get_Files_And_Folders(device, 1, root_parent_id);
+	ComInit com;
+	if (!com.ok())
+		return nullptr;
+
+	auto state = state_for_device(device);
+	if (!state || !state->content)
+		return nullptr;
+
+	ComPtr<IPortableDeviceProperties> properties;
+	if (FAILED(state->content->Properties(properties.put())))
+		return nullptr;
+
+	LIBMTP_file_t *head = nullptr;
+	LIBMTP_file_t **tail = &head;
+	for (LIBMTP_devicestorage_t *storage = device ? device->storage : nullptr; storage; storage = storage->next) {
+		std::wstring storage_object = object_for_id(state.get(), storage->id);
+		if (!storage_object.empty())
+			append_children(state.get(), properties.get(), storage->id, root_parent_id, storage_object, true, &tail);
+	}
+	return head;
 }
 
 LIBMTP_file_t *LIBMTP_Get_Files_And_Folders(LIBMTP_mtpdevice_t *device,
 	uint32_t storage_id, uint32_t parent_id)
 {
-	DeviceState *state = state_for_device(device);
+	auto state = state_for_device(device);
 	if (!state || !state->content)
 		return nullptr;
 
-	std::wstring parent_object = parent_id == root_parent_id ? object_for_id(state, storage_id) : object_for_id(state, parent_id);
+	ComInit com;
+	if (!com.ok())
+		return nullptr;
+
+	std::wstring parent_object = parent_id == root_parent_id ? object_for_id(state.get(), storage_id) : object_for_id(state.get(), parent_id);
 	if (parent_object.empty())
 		return nullptr;
 
@@ -599,28 +699,9 @@ LIBMTP_file_t *LIBMTP_Get_Files_And_Folders(LIBMTP_mtpdevice_t *device,
 	if (FAILED(state->content->Properties(properties.put())))
 		return nullptr;
 
-	ComPtr<IEnumPortableDeviceObjectIDs> enum_objects;
-	if (FAILED(state->content->EnumObjects(0, parent_object.c_str(), nullptr, enum_objects.put())))
-		return nullptr;
-
 	LIBMTP_file_t *head = nullptr;
 	LIBMTP_file_t **tail = &head;
-	for (;;) {
-		LPWSTR object_ids[16] = {};
-		DWORD fetched = 0;
-		HRESULT hr = enum_objects->Next(16, object_ids, &fetched);
-		if (FAILED(hr) || fetched == 0)
-			break;
-
-		for (DWORD i = 0; i < fetched; ++i) {
-			std::wstring object_id = co_string_to_wstring(object_ids[i]);
-			LIBMTP_file_t *file = make_file(state, properties.get(), object_id, storage_id, parent_id);
-			if (file) {
-				*tail = file;
-				tail = &file->next;
-			}
-		}
-	}
+	append_children(state.get(), properties.get(), storage_id, parent_id, parent_object, false, &tail);
 
 	return head;
 }
@@ -640,11 +721,15 @@ int LIBMTP_Get_File_To_Handler(LIBMTP_mtpdevice_t *device, uint32_t id,
 	(void)cb;
 	(void)data;
 
-	DeviceState *state = state_for_device(device);
+	auto state = state_for_device(device);
 	if (!state || !state->content || !put_func)
 		return -1;
 
-	std::wstring object_id = object_for_id(state, id);
+	ComInit com;
+	if (!com.ok())
+		return -1;
+
+	std::wstring object_id = object_for_id(state.get(), id);
 	if (object_id.empty())
 		return -1;
 
