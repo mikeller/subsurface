@@ -82,6 +82,27 @@ function Test-Command {
     return $?
 }
 
+function Normalize-PathEnvironment {
+    $pathVariables = [System.Environment]::GetEnvironmentVariables('Process').GetEnumerator() |
+        Where-Object { [string]::Equals([string]$_.Key, 'Path', [System.StringComparison]::OrdinalIgnoreCase) }
+
+    if (@($pathVariables).Count -le 1) {
+        return
+    }
+
+    $pathEntries = New-Object System.Collections.Generic.List[string]
+    foreach ($variable in $pathVariables) {
+        foreach ($entry in ([string]$variable.Value -split ';')) {
+            if ($entry -and -not $pathEntries.Contains($entry)) {
+                $pathEntries.Add($entry)
+            }
+        }
+        [System.Environment]::SetEnvironmentVariable([string]$variable.Key, $null, 'Process')
+    }
+
+    [System.Environment]::SetEnvironmentVariable('Path', ($pathEntries -join ';'), 'Process')
+}
+
 # ---------------------------------------------------------------
 # Determine paths
 # ---------------------------------------------------------------
@@ -307,6 +328,7 @@ if (-not $SkipLibdivecomputer) {
     $env:CL = "/WX- /wd4996 /D_CRT_NONSTDC_NO_WARNINGS /D_CRT_SECURE_NO_WARNINGS"
 
     Write-Host "Building with msbuild..."
+    Normalize-PathEnvironment
     msbuild -m -p:Platform=x64 -p:Configuration=$BuildType -p:EnableLibmtp=true $libdcProj
 
     if ($LASTEXITCODE -ne 0) {
