@@ -2,6 +2,8 @@
 #include "testhelper.h"
 #include "core/bluetoothaddress.h"
 #include "core/btdiscovery.h"
+#include "core/bleconnectionretry.h"
+#include <libdivecomputer/descriptor.h>
 
 void TestHelper::initTestCase()
 {
@@ -68,6 +70,115 @@ void TestHelper::automaticBluetoothAddress()
 	QBluetoothUuid uuid(QStringLiteral("{6e50ff5d-cdd3-4c43-a80a-1ed4c7d2d2a5}"));
 	QBluetoothDeviceInfo uuidDevice(uuid, "test", 0);
 	QCOMPARE(btDeviceAddressForAuto(&uuidDevice), QString("LE:") + uuid.toString());
+}
+
+void TestHelper::canonicalBluetoothCacheKey()
+{
+	QCOMPARE(canonicalBluetoothAddress("01:a2:b3:c4:d5:06"), QString("01:A2:B3:C4:D5:06"));
+	QCOMPARE(canonicalBluetoothAddress("LE:01-a2-b3-c4-d5-06"), QString("01:A2:B3:C4:D5:06"));
+	QCOMPARE(canonicalBluetoothAddress("Mares Quad Air (LE:01:a2:b3:c4:d5:06)"),
+		 QString("01:A2:B3:C4:D5:06"));
+	QCOMPARE(canonicalBluetoothAddress("LE:{6e50ff5d-cdd3-4c43-a80a-1ed4c7d2d2a5}"),
+		 QString("{6e50ff5d-cdd3-4c43-a80a-1ed4c7d2d2a5}"));
+
+	QBluetoothDeviceInfo device(QBluetoothAddress("01:A2:B3:C4:D5:06"), "test", 0);
+	invalidateBtDeviceInfo("01:A2:B3:C4:D5:06");
+	saveBtDeviceInfo("01:A2:B3:C4:D5:06", device);
+	QVERIFY(hasBtDeviceInfo("test device (LE:01:a2:b3:c4:d5:06)"));
+	QVERIFY(!btDeviceInfoNeedsDiscovery("test device (LE:01:a2:b3:c4:d5:06)"));
+	invalidateBtDeviceInfo("LE:01:A2:B3:C4:D5:06");
+}
+
+void TestHelper::bluetoothCacheFreshness()
+{
+	const QString address = "02:A2:B3:C4:D5:06";
+	QBluetoothDeviceInfo oldDevice(QBluetoothAddress(address), "old", 0);
+	QBluetoothDeviceInfo newDevice(QBluetoothAddress(address), "new", 0);
+	invalidateBtDeviceInfo(address);
+	BtDiscoveryGeneration oldGeneration = beginBtDeviceInfoDiscovery();
+	saveBtDeviceInfo(address, oldDevice, oldGeneration);
+	BtDiscoveryGeneration freshGeneration = beginBtDeviceInfoDiscovery();
+	QVERIFY(!hasBtDeviceInfo("LE:" + address, freshGeneration));
+	saveBtDeviceInfo("LE:" + address, newDevice, freshGeneration);
+	QVERIFY(hasBtDeviceInfo(address, freshGeneration));
+	QCOMPARE(getBtDeviceInfo(address, freshGeneration).name(), QString("new"));
+	invalidateBtDeviceInfo(address);
+}
+
+void TestHelper::boundedBleRetry()
+{
+	int controllersCreated = 0;
+	int freshDiscoveries = 0;
+	BleConnectRetryResult failed = runBleConnectAttempts(
+		[&](int) {
+			++controllersCreated;
+			++freshDiscoveries;
+			return BleConnectAttemptResult::TransientFailure;
+		}, [] { return false; }, [] {});
+	QCOMPARE(failed.attempts, 3);
+	QCOMPARE(controllersCreated, 3);
+	QCOMPARE(freshDiscoveries, 3);
+
+	controllersCreated = 0;
+	freshDiscoveries = 0;
+	BleConnectRetryResult succeeded = runBleConnectAttempts(
+		[&](int attempt) {
+			++controllersCreated;
+			++freshDiscoveries;
+			return attempt == 2 ? BleConnectAttemptResult::Success :
+				BleConnectAttemptResult::TransientFailure;
+		}, [] { return false; }, [] {});
+	QCOMPARE(succeeded.attempts, 2);
+	QCOMPARE(controllersCreated, 2);
+	QCOMPARE(freshDiscoveries, 2);
+}
+
+void TestHelper::cancelledBleRetry()
+{
+	int attempts = 0;
+	bool cancelled = false;
+	BleConnectRetryResult result = runBleConnectAttempts(
+		[&](int) {
+			++attempts;
+			return BleConnectAttemptResult::TransientFailure;
+		}, [&] { return cancelled; }, [&] { cancelled = true; });
+	QCOMPARE(result.result, BleConnectAttemptResult::Cancelled);
+	QCOMPARE(attempts, 1);
+}
+
+void TestHelper::bluetoothTransportModes()
+{
+	QVERIFY(isBluetoothLowEnergyAddress("LE:01:A2:B3:C4:D5:06"));
+	QVERIFY(!isBluetoothClassicAddress("LE:01:A2:B3:C4:D5:06"));
+	QVERIFY(isBluetoothClassicAddress("BT:01:A2:B3:C4:D5:06"));
+	QVERIFY(!isBluetoothLowEnergyAddress("BT:01:A2:B3:C4:D5:06"));
+	QVERIFY(!isBluetoothLowEnergyAddress("01:A2:B3:C4:D5:06"));
+	QVERIFY(!isBluetoothClassicAddress("01:A2:B3:C4:D5:06"));
+}
+
+void TestHelper::maresQuadAirTransports()
+{
+	dc_iterator_t *iterator = nullptr;
+	QVERIFY(dc_descriptor_iterator(&iterator) == DC_STATUS_SUCCESS);
+	dc_descriptor_t *descriptor = nullptr;
+	unsigned int transports = 0;
+	while (dc_iterator_next(iterator, &descriptor) == DC_STATUS_SUCCESS) {
+		if (QString(dc_descriptor_get_vendor(descriptor)) == "Mares" &&
+		    QString(dc_descriptor_get_product(descriptor)) == "Quad Air") {
+			transports = dc_descriptor_get_transports(descriptor);
+			dc_descriptor_free(descriptor);
+			break;
+		}
+		dc_descriptor_free(descriptor);
+	}
+	dc_iterator_free(iterator);
+	QVERIFY(transports & DC_TRANSPORT_SERIAL);
+	QVERIFY(transports & DC_TRANSPORT_BLE);
+	QVERIFY(!(transports & DC_TRANSPORT_BLUETOOTH));
+	QCOMPARE(transports & (DC_TRANSPORT_BLUETOOTH | DC_TRANSPORT_BLE),
+		 static_cast<unsigned int>(DC_TRANSPORT_BLE));
+	QCOMPARE(transports & DC_TRANSPORT_BLUETOOTH, 0U);
+	QCOMPARE(transports & DC_TRANSPORT_BLE, static_cast<unsigned int>(DC_TRANSPORT_BLE));
 }
 
 QTEST_GUILESS_MAIN(TestHelper)

@@ -10,11 +10,20 @@
 #include <QElapsedTimer>
 #include <QCoreApplication>
 #include <QSet>
+#include <QMutex>
+#include <QMutexLocker>
+#include <algorithm>
 
 extern QMap<QString, dc_descriptor_t *> descriptorLookup;
 
 namespace {
-	QHash<QString, QBluetoothDeviceInfo> btDeviceInfo;
+	struct CachedBtDeviceInfo {
+		QBluetoothDeviceInfo deviceInfo;
+		BtDiscoveryGeneration generation = 0;
+	};
+	QHash<QString, CachedBtDeviceInfo> btDeviceInfo;
+	QMutex btDeviceInfoMutex;
+	BtDiscoveryGeneration latestDiscoveryGeneration = 0;
 	QSet<QString> btMessages;
 }
 
@@ -263,6 +272,7 @@ void BTDiscovery::BTDiscoveryReDiscover()
 				});
 			report_info("discovery methods %d", (int)QBluetoothDeviceDiscoveryAgent::supportedDiscoveryMethods());
 		}
+		discoveryGeneration = beginBtDeviceInfoDiscovery();
 #if defined(Q_OS_ANDROID)
 		// on Android, we cannot scan for classic devices - we just get the paired ones
 		report_info("starting BLE discovery");
@@ -357,7 +367,7 @@ void BTDiscovery::btDeviceDiscovered(const QBluetoothDeviceInfo &device)
 
 	// Qt 6 requires a QBluetoothDeviceInfo to create a QLowEnergyController;
 	// save discovered device info so qt_ble_open() can look it up later.
-	saveBtDeviceInfo(btDeviceAddress(&device, false), device);
+	saveBtDeviceInfo(btDeviceAddress(&device, false), device, discoveryGeneration);
 
 	btDeviceDiscoveredMain(this_d, false);
 }
@@ -488,11 +498,14 @@ void BTDiscovery::discoverAddress(QString address)
 		return;
 
 	// let's make sure there is no device name mixed in with the address
-	QString btAddress;
-	btAddress = extractBluetoothAddress(address);
+	QString btAddress = canonicalBluetoothAddress(address);
+	report_info("Bluetooth discovery requested address '%s', cache key '%s'",
+		    qPrintable(address), qPrintable(btAddress));
 
-	if (!btDeviceInfo.keys().contains(address) && !discoveryAgent->isActive()) {
-		report_info("restarting discovery agent");
+	if (btDeviceInfoNeedsDiscovery(btAddress) && !discoveryAgent->isActive()) {
+		discoveryGeneration = beginBtDeviceInfoDiscovery();
+		report_info("restarting discovery agent for generation %llu",
+			    static_cast<unsigned long long>(discoveryGeneration));
 		discoveryAgent->start();
 	}
 }
@@ -505,33 +518,93 @@ void BTDiscovery::stopAgent()
 	discoveryAgent->stop();
 }
 
-void saveBtDeviceInfo(const QString &devaddr, QBluetoothDeviceInfo deviceInfo)
+BtDiscoveryGeneration beginBtDeviceInfoDiscovery()
 {
-	btDeviceInfo[devaddr] = deviceInfo;
+	QMutexLocker locker(&btDeviceInfoMutex);
+	return ++latestDiscoveryGeneration;
 }
 
-QBluetoothDeviceInfo getBtDeviceInfo(const QString &devaddr)
+void saveBtDeviceInfo(const QString &devaddr, QBluetoothDeviceInfo deviceInfo,
+			 BtDiscoveryGeneration generation)
 {
-	if (btDeviceInfo.contains(devaddr)) {
-		BTDiscovery::instance()->stopAgent();
-		return btDeviceInfo[devaddr];
+	QString key = canonicalBluetoothAddress(devaddr);
+	if (key.isEmpty())
+		return;
+	QMutexLocker locker(&btDeviceInfoMutex);
+	if (!generation)
+		generation = ++latestDiscoveryGeneration;
+	else
+		latestDiscoveryGeneration = std::max(latestDiscoveryGeneration, generation);
+	CachedBtDeviceInfo &entry = btDeviceInfo[key];
+	if (generation >= entry.generation)
+		entry = { deviceInfo, generation };
+}
+
+bool hasBtDeviceInfo(const QString &devaddr, BtDiscoveryGeneration minimumGeneration)
+{
+	QString key = canonicalBluetoothAddress(devaddr);
+	QMutexLocker locker(&btDeviceInfoMutex);
+	auto it = btDeviceInfo.constFind(key);
+	return it != btDeviceInfo.cend() && it->generation >= minimumGeneration;
+}
+
+bool btDeviceInfoNeedsDiscovery(const QString &devaddr)
+{
+	return !hasBtDeviceInfo(canonicalBluetoothAddress(devaddr));
+}
+
+BtDiscoveryGeneration btDeviceInfoGeneration(const QString &devaddr)
+{
+	QString key = canonicalBluetoothAddress(devaddr);
+	QMutexLocker locker(&btDeviceInfoMutex);
+	auto it = btDeviceInfo.constFind(key);
+	return it == btDeviceInfo.cend() ? 0 : it->generation;
+}
+
+void invalidateBtDeviceInfo(const QString &devaddr)
+{
+	QMutexLocker locker(&btDeviceInfoMutex);
+	btDeviceInfo.remove(canonicalBluetoothAddress(devaddr));
+}
+
+QBluetoothDeviceInfo getBtDeviceInfo(const QString &devaddr,
+				     BtDiscoveryGeneration minimumGeneration)
+{
+	QString key = canonicalBluetoothAddress(devaddr);
+	report_info("Bluetooth cache lookup requested '%s', key '%s', minimum generation %llu",
+		    qPrintable(devaddr), qPrintable(key),
+		    static_cast<unsigned long long>(minimumGeneration));
+	if (hasBtDeviceInfo(key, minimumGeneration)) {
+		QMutexLocker locker(&btDeviceInfoMutex);
+		const CachedBtDeviceInfo entry = btDeviceInfo.value(key);
+		report_info("returning %s device information from generation %llu",
+			    minimumGeneration ? "newly observed" : "cached",
+			    static_cast<unsigned long long>(entry.generation));
+		locker.unlock();
+		if (!minimumGeneration)
+			BTDiscovery::instance()->stopAgent();
+		return entry.deviceInfo;
 	}
-	if(!btDeviceInfo.keys().contains(devaddr)) {
+	if (!hasBtDeviceInfo(key, minimumGeneration)) {
 		report_info("still looking scan is still running, we should just wait for a few moments");
 		// wait for a maximum of 30 more seconds
 		// yes, that seems crazy, but on my Mac I see this take more than 20 seconds
 		QElapsedTimer timer;
 		timer.start();
 		do {
-			if (btDeviceInfo.keys().contains(devaddr)) {
-				BTDiscovery::instance()->stopAgent();
-				return btDeviceInfo[devaddr];
+			if (hasBtDeviceInfo(key, minimumGeneration)) {
+				QMutexLocker locker(&btDeviceInfoMutex);
+				const CachedBtDeviceInfo entry = btDeviceInfo.value(key);
+				locker.unlock();
+				if (!minimumGeneration)
+					BTDiscovery::instance()->stopAgent();
+				return entry.deviceInfo;
 			}
 			QCoreApplication::processEvents(QEventLoop::AllEvents, 100);
 			QThread::msleep(100);
 		} while (timer.elapsed() < 30000);
 	}
-	report_info("notify user that we can't find %s", qPrintable(devaddr));
+	report_info("notify user that we can't find %s", qPrintable(key));
 	return QBluetoothDeviceInfo();
 }
 #endif // BT_SUPPORT

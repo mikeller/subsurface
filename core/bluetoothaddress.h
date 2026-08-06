@@ -10,6 +10,7 @@ bool isBluetoothLowEnergyAddress(const QString &address);
 bool isBluetoothClassicAddress(const QString &address);
 QString bluetoothAddressWithoutPrefix(const QString &address);
 QString extractBluetoothAddress(const QString &address);
+QString canonicalBluetoothAddress(const QString &address);
 std::pair<QString, QString> extractBluetoothNameAddress(const QString &address);
 
 #endif

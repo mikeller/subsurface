@@ -17,9 +17,18 @@
 #include <QJniEnvironment>
 #endif
 
-void saveBtDeviceInfo(const QString &devaddr, QBluetoothDeviceInfo deviceInfo);
+using BtDiscoveryGeneration = quint64;
+
+BtDiscoveryGeneration beginBtDeviceInfoDiscovery();
+void saveBtDeviceInfo(const QString &devaddr, QBluetoothDeviceInfo deviceInfo,
+			 BtDiscoveryGeneration generation = 0);
+bool hasBtDeviceInfo(const QString &devaddr, BtDiscoveryGeneration minimumGeneration = 0);
+bool btDeviceInfoNeedsDiscovery(const QString &devaddr);
+BtDiscoveryGeneration btDeviceInfoGeneration(const QString &devaddr);
+void invalidateBtDeviceInfo(const QString &devaddr);
 bool matchesKnownDiveComputerNames(QString btName);
-QBluetoothDeviceInfo getBtDeviceInfo(const QString &devaddr);
+QBluetoothDeviceInfo getBtDeviceInfo(const QString &devaddr,
+				     BtDiscoveryGeneration minimumGeneration = 0);
 QString btDeviceAddress(const QBluetoothDeviceInfo *device, bool isBle);
 QString btDeviceAddressForAuto(const QBluetoothDeviceInfo *device);
 
@@ -72,6 +81,7 @@ private:
 
 	QList<struct btPairedDevice> btPairedDevices;
 	QBluetoothDeviceDiscoveryAgent *discoveryAgent;
+	BtDiscoveryGeneration discoveryGeneration = 0;
 
 signals:
 	void dcVendorChanged();

@@ -40,6 +40,32 @@ QString extractBluetoothAddress(const QString &address)
 	return re.match(address).captured(0);
 }
 
+QString canonicalBluetoothAddress(const QString &address)
+{
+	QString extracted = bluetoothAddressWithoutPrefix(extractBluetoothAddress(address.trimmed()));
+	if (extracted.isEmpty())
+		return {};
+
+	// Apple exposes BLE peripherals as UUIDs. Keep that identifier instead of
+	// trying to interpret it as a Bluetooth MAC address.
+	if (extracted.startsWith('{'))
+		return extracted.toLower();
+
+	QString digits = extracted;
+	digits.remove(':');
+	digits.remove('-');
+	if (digits.size() != 12)
+		return {};
+
+	QString result;
+	for (int i = 0; i < digits.size(); i += 2) {
+		if (!result.isEmpty())
+			result += ':';
+		result += digits.mid(i, 2);
+	}
+	return result.toUpper();
+}
+
 std::pair<QString, QString> extractBluetoothNameAddress(const QString &address)
 {
 	QString extractedAddress = extractBluetoothAddress(address);

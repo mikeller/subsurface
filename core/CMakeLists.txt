@@ -50,6 +50,8 @@ endif()
 
 # compile the core library part in C, part in C++
 set(SUBSURFACE_CORE_LIB_SRCS
+	bleconnectionretry.cpp
+	bleconnectionretry.h
 	bluetoothaddress.cpp
 	bluetoothaddress.h
 	checkcloudconnection.cpp

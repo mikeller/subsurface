@@ -12,11 +12,13 @@
 #include <QTimer>
 #include <QTime>
 #include <QLoggingCategory>
+#include <memory>
 
 #include <libdivecomputer/version.h>
 #include <libdivecomputer/ble.h>
 
 #include "libdivecomputer.h"
+#include "core/bleconnectionretry.h"
 #include "core/qt-ble.h"
 #include "core/btdiscovery.h"
 #include "core/errorhelper.h"
@@ -644,10 +646,145 @@ static int use_random_address(const device_data_t &user_device)
 }
 #endif
 
+#if defined(Q_OS_LINUX) && !defined(Q_OS_ANDROID)
+static QBluetoothDeviceInfo observeFreshDevice(const QString &requestedAddress,
+					       QBluetoothDeviceDiscoveryAgent &scanAgent,
+					       BtDiscoveryGeneration generation,
+					       bool &cancelled)
+{
+	struct ObservationState {
+		QString key;
+		bool observed = false;
+		bool discoveryFailed = false;
+	};
+	auto state = std::make_shared<ObservationState>();
+	state->key = canonicalBluetoothAddress(requestedAddress);
+	auto observe = [state, generation](const QBluetoothDeviceInfo &device) {
+		if (canonicalBluetoothAddress(btDeviceAddress(&device, false)) != state->key)
+			return;
+		saveBtDeviceInfo(state->key, device, generation);
+		state->observed = true;
+		report_info("new Bluetooth observation for key '%s', generation %llu",
+			    qPrintable(state->key), static_cast<unsigned long long>(generation));
+	};
+	QObject::connect(&scanAgent, &QBluetoothDeviceDiscoveryAgent::deviceDiscovered,
+			 &scanAgent, observe);
+	QObject::connect(&scanAgent, &QBluetoothDeviceDiscoveryAgent::deviceUpdated,
+			 &scanAgent, [observe](const QBluetoothDeviceInfo &device, QBluetoothDeviceInfo::Fields) {
+		observe(device);
+	});
+#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
+	QObject::connect(&scanAgent, &QBluetoothDeviceDiscoveryAgent::errorOccurred,
+#else
+	QObject::connect(&scanAgent,
+			 QOverload<QBluetoothDeviceDiscoveryAgent::Error>::of(&QBluetoothDeviceDiscoveryAgent::error),
+#endif
+			 &scanAgent, [state, &scanAgent](QBluetoothDeviceDiscoveryAgent::Error error) {
+		state->discoveryFailed = true;
+		report_info("Bluetooth discovery error %d: %s", static_cast<int>(error),
+			    qPrintable(scanAgent.errorString()));
+	});
+
+	scanAgent.setLowEnergyDiscoveryTimeout(0);
+	scanAgent.start(QBluetoothDeviceDiscoveryAgent::LowEnergyMethod);
+	report_info("started targeted LE discovery for '%s', generation %llu, active %d",
+		    qPrintable(state->key), static_cast<unsigned long long>(generation), scanAgent.isActive());
+	WAITFOR(state->observed || state->discoveryFailed || import_thread_cancelled, 30000);
+	cancelled = import_thread_cancelled;
+	if (cancelled)
+		report_info("Bluetooth discovery cancelled for '%s'", qPrintable(state->key));
+	if (!state->observed || cancelled || state->discoveryFailed)
+		return {};
+	return getBtDeviceInfo(state->key, generation);
+}
+
+static QLowEnergyController *connectLinuxBle(const QString &address, device_data_t &userDevice,
+					     BleConnectRetryResult &retryResult)
+{
+	QLowEnergyController *connectedController = nullptr;
+	retryResult = runBleConnectAttempts(
+		[&](int attemptNumber) {
+			QBluetoothDeviceDiscoveryAgent scanAgent;
+			const BtDiscoveryGeneration generation = beginBtDeviceInfoDiscovery();
+			bool cancelled = false;
+			report_info("BLE connection attempt %d of 3; requesting fresh device information",
+				    attemptNumber);
+			QBluetoothDeviceInfo remoteDevice = observeFreshDevice(address, scanAgent, generation, cancelled);
+			if (cancelled)
+				return BleConnectAttemptResult::Cancelled;
+			if (!remoteDevice.isValid()) {
+				if (scanAgent.isActive())
+					scanAgent.stop();
+				report_info("attempt %d has no fresh device information; not retrying", attemptNumber);
+				return BleConnectAttemptResult::PermanentFailure;
+			}
+#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
+			QLowEnergyController *controller = QLowEnergyController::createCentral(remoteDevice);
+#else
+			QLowEnergyController *controller = new QLowEnergyController(remoteDevice.address());
+#endif
+			if (use_random_address(userDevice))
+				controller->setRemoteAddressType(QLowEnergyController::RandomAddress);
+			QObject::connect(controller, &QLowEnergyController::stateChanged, controller,
+					 [attemptNumber](QLowEnergyController::ControllerState state) {
+				report_info("BLE attempt %d controller state %d", attemptNumber, static_cast<int>(state));
+			});
+#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
+			QObject::connect(controller, &QLowEnergyController::errorOccurred, controller,
+#else
+			QObject::connect(controller,
+					 QOverload<QLowEnergyController::Error>::of(&QLowEnergyController::error), controller,
+#endif
+					 [controller, attemptNumber](QLowEnergyController::Error error) {
+				report_info("BLE attempt %d controller error %d: %s", attemptNumber,
+					    static_cast<int>(error), qPrintable(controller->errorString()));
+			});
+			controller->connectToDevice();
+			WAITFOR(controller->state() != QLowEnergyController::ConnectingState || import_thread_cancelled,
+				BLE_TIMEOUT);
+			if (scanAgent.isActive())
+				scanAgent.stop();
+			report_info("stopped attempt %d discovery before GATT setup; active %d",
+				    attemptNumber, scanAgent.isActive());
+			if (import_thread_cancelled) {
+				controller->disconnectFromDevice();
+				delete controller;
+				report_info("BLE discovery, controller and retry cancelled");
+				return BleConnectAttemptResult::Cancelled;
+			}
+			if (controller->state() == QLowEnergyController::ConnectedState) {
+				connectedController = controller;
+				return BleConnectAttemptResult::Success;
+			}
+			const bool timedOut = controller->state() == QLowEnergyController::ConnectingState;
+			const QLowEnergyController::Error error = controller->error();
+			const bool transient = timedOut || error == QLowEnergyController::ConnectionError ||
+				error == QLowEnergyController::RemoteHostClosedError ||
+				(error == QLowEnergyController::NoError &&
+				 controller->state() == QLowEnergyController::UnconnectedState);
+			report_info("BLE attempt %d failed: state %d, error %d (%s); retry %s",
+				    attemptNumber, static_cast<int>(controller->state()), static_cast<int>(error),
+				    qPrintable(controller->errorString()),
+				    transient && attemptNumber < 3 ? "scheduled" : "not scheduled");
+			controller->disconnectFromDevice();
+			delete controller;
+			return transient ? BleConnectAttemptResult::TransientFailure :
+				BleConnectAttemptResult::PermanentFailure;
+		},
+		[] { return import_thread_cancelled; },
+		[] {
+			report_info("waiting 1000 ms before BLE retry");
+			WAITFOR(import_thread_cancelled, 1000);
+		});
+	return connectedController;
+}
+#endif
+
 dc_status_t qt_ble_open(void **io, dc_context_t *, const char *devaddr, device_data_t *user_device)
 {
 	debugCounter = 0;
 	QLoggingCategory::setFilterRules(QStringLiteral("qt.bluetooth* = true"));
+	const QString requestedAddress = QString::fromUtf8(devaddr);
 
 	/*
 	 * LE-only devices get the "LE:" prepended by the scanning
@@ -658,11 +795,26 @@ dc_status_t qt_ble_open(void **io, dc_context_t *, const char *devaddr, device_d
 	 */
 	if (!strncmp(devaddr, "LE:", 3))
 		devaddr += 3;
+	const QString cacheKey = canonicalBluetoothAddress(QString::fromUtf8(devaddr));
+	const char *transportMode = isBluetoothLowEnergyAddress(QString::fromStdString(user_device->devname)) ?
+		"forced BLE" : "Auto (BLE selected by descriptor)";
+	report_info("BLE request '%s', cache key '%s', transport mode %s",
+		    qPrintable(requestedAddress), qPrintable(cacheKey), transportMode);
 
 	// HACK ALERT! Qt 5.9 needs this for proper Bluez operation
 	qputenv("QT_DEFAULT_CENTRAL_SERVICES", "1");
 
-#if defined(Q_OS_MACOS) || defined(Q_OS_IOS) || QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
+	QLowEnergyController *controller = nullptr;
+#if defined(Q_OS_LINUX) && !defined(Q_OS_ANDROID)
+	BleConnectRetryResult retryResult;
+	controller = connectLinuxBle(cacheKey, *user_device, retryResult);
+	if (!controller) {
+		if (retryResult.result == BleConnectAttemptResult::Cancelled)
+			return DC_STATUS_CANCELLED;
+		report_error("Failed to connect to %s after %d attempt(s)", devaddr, retryResult.attempts);
+		return DC_STATUS_IO;
+	}
+#elif defined(Q_OS_MACOS) || defined(Q_OS_IOS) || QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
 	QBluetoothDeviceInfo remoteDevice = getBtDeviceInfo(QString(devaddr));
 
 	// Many BLE dive computers (e.g. Suunto EON Steel) stop advertising once
@@ -691,64 +843,28 @@ dc_status_t qt_ble_open(void **io, dc_context_t *, const char *devaddr, device_d
 #endif
 	}
 
-	QLowEnergyController *controller = QLowEnergyController::createCentral(remoteDevice);
+	controller = QLowEnergyController::createCentral(remoteDevice);
 #else
 	// this is deprecated but given that we don't use Qt to scan for
 	// devices on Android, we don't have QBluetoothDeviceInfo for the
 	// paired devices and therefore cannot use the newer interfaces
 	// that are preferred starting with Qt 5.7
 	QBluetoothAddress remoteDeviceAddress(devaddr);
-	QLowEnergyController *controller = new QLowEnergyController(remoteDeviceAddress);
+	controller = new QLowEnergyController(remoteDeviceAddress);
 #endif
 	report_info("qt_ble_open(%s)", devaddr);
 
-#if !defined(Q_OS_WIN)
+#if !defined(Q_OS_WIN) && !(defined(Q_OS_LINUX) && !defined(Q_OS_ANDROID))
 	if (use_random_address(*user_device))
 		controller->setRemoteAddressType(QLowEnergyController::RandomAddress);
 #endif
 
-#if defined(Q_OS_LINUX) && !defined(Q_OS_ANDROID)
-	// AI-generated (Claude)
-	// Some dive computers (e.g. the Shearwater Perdix 3) advertise with a
-	// resolvable random address that changes between connections. BlueZ
-	// frequently aborts a cold connect to such a device because the
-	// controller needs a fresh advertising report to know the current
-	// address; connecting works reliably only while an LE scan is active.
-	// Keep a scan running for the duration of the connect attempt.
-	QBluetoothDeviceDiscoveryAgent scanAgent;
-	scanAgent.setLowEnergyDiscoveryTimeout(0); // scan until stop()
-	scanAgent.start(QBluetoothDeviceDiscoveryAgent::LowEnergyMethod);
-#endif
-
+#if !(defined(Q_OS_LINUX) && !defined(Q_OS_ANDROID))
 	// Try to connect to the device
 	controller->connectToDevice();
 
 	// Create a timer. If the connection doesn't succeed after five seconds or no error occurs then stop the opening step
 	WAITFOR(controller->state() != QLowEnergyController::ConnectingState, BLE_TIMEOUT);
-
-#if defined(Q_OS_LINUX) && !defined(Q_OS_ANDROID)
-	// AI-generated (Claude)
-	// A cold LE connect on BlueZ can fail transiently: the kernel may
-	// abort the first attempt with le-connection-abort-by-local while it
-	// waits for a fresh advertising report, or the connect can complete
-	// just after our timeout while BlueZ is still retrying. Retry a few
-	// times (with the scan still active) before giving up.
-	for (int attempt = 1; attempt <= 2; attempt++) {
-		if (controller->state() == QLowEnergyController::ConnectedState)
-			break;
-		if (controller->state() == QLowEnergyController::UnconnectedState) {
-			report_info("connect attempt %d to %s failed ('%s'), retrying",
-				    attempt, devaddr, qPrintable(controller->errorString()));
-			controller->connectToDevice();
-		} else {
-			report_info("connect attempt %d to %s still pending, waiting longer",
-				    attempt, devaddr);
-		}
-		WAITFOR(controller->state() != QLowEnergyController::ConnectingState, BLE_TIMEOUT);
-	}
-
-	scanAgent.stop();
-#endif
 
 	switch (controller->state()) {
 	case QLowEnergyController::ConnectedState:
@@ -765,6 +881,7 @@ dc_status_t qt_ble_open(void **io, dc_context_t *, const char *devaddr, device_d
 		delete controller;
 		return DC_STATUS_IO;
 	}
+#endif
 
 	// We need to discover services etc here!
 	// Note that ble takes ownership of controller and henceforth deleting ble will

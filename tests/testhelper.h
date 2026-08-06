@@ -13,6 +13,12 @@ private slots:
 	void recognizeBtAddress();
 	void parseNameAddress();
 	void automaticBluetoothAddress();
+	void canonicalBluetoothCacheKey();
+	void bluetoothCacheFreshness();
+	void boundedBleRetry();
+	void cancelledBleRetry();
+	void bluetoothTransportModes();
+	void maresQuadAirTransports();
 };
 
 #endif
