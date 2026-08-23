@@ -3931,9 +3931,22 @@ image::images/PlannerWindow1.png["FIGURE: Dive planner startup window",align="ce
   concentration in the boxes provided in this dialog. Add additional cylinders by using the
   "+" icon to the top right-hand of the dialog.
 
+- In the desktop planner, the _Use_ column of the _Available Gases_ table classifies each
+  cylinder. _OC Gas_ is an open-circuit gas that the desktop planner may select automatically
+  for ascent and decompression according to its configured _Deco
+  switch at_ depth. _Travel Gas_ is an open-circuit gas for travel segments that the user
+  explicitly enters in the _Dive planner points_ table. The desktop planner does not
+  automatically select a _Travel Gas_ cylinder for later ascent or decompression.
+
 - The _Available Gases_ table includes three gas depth fields, labelled:
- ** Deco switch at: the switch depth for deco gases. Unless overridden by the user, this will be
-    automatically calculated based on the Deco pO~2~ preference (default 1.6 bar)
+ ** Deco switch at: the switch depth for a cylinder classified as _OC Gas_. Unless overridden
+    by the user, this is automatically calculated based on the Deco pO~2~ preference (default
+    1.6 bar). In the desktop planner, a nonzero depth makes the cylinder available for automatic
+    gas selection during ascent and decompression. Clearing the field or setting it to zero
+    leaves the switch depth unconfigured: zero remains displayed and the cylinder is not
+    selected automatically for ascent or decompression by the desktop planner. This does not
+    classify the cylinder as _Travel Gas_; zero is a switch-depth configuration on an _OC Gas_
+    cylinder, whereas _Travel Gas_ is an explicit cylinder-use classification.
  ** Bot. MOD: the gas Maximum Operating Depth (MOD) if it is used as a bottom mix. Automatically
     calculated based on the Bottom pO~2~ preference (default 1.4 bar). Editing this field will modify the
     O~2~% according to the depth set. Set to ''*'' to calculate the best O~2~% for the dive maximum depth.
@@ -4115,7 +4128,8 @@ Commonly used values are 1.4 bar for the bottom part of the dive and 1.6 bar for
 stages. Normally, a partial pressure of 1.6 bar is not exceeded. The depth at which switching to a gas
 takes place can be edited in the
 _Available Gases_ dialog. Normally, the planner decides on switching to a new gas when, during
-ascent, the partial pressure of the new gas has decreased to 1.6 bar.
+ascent, the partial pressure of the new gas has decreased to 1.6 bar. This automatic selection
+in the desktop planner only applies to _OC Gas_ cylinders with a nonzero _Deco switch at_ depth.
 
 *c) Gas management*: With open-circuit dives this is a primary
 consideration. Divers need to keep within the limits of the amount of
@@ -4169,8 +4183,10 @@ the dive is planned, use the _Planner_ / _Add reverse profile_ menu action to cr
 Show any changes in gas cylinder used by indicating gas changes as explained
 in the section <<S_CreateProfile,hand-creating a dive profile>>. These changes should
 reflect the cylinders and gas compositions defined in the table with _Available Gases_.
-If two or more gases are used, automatic gas switches will be planned during the ascent to
-the surface.
+In the desktop planner, automatic gas switches during the ascent to the surface are planned
+only for cylinders classified as _OC Gas_ that have a nonzero _Deco switch at_ depth.
+Cylinders classified as _Travel Gas_, and _OC Gas_ cylinders whose switch depth is zero, must
+be selected explicitly for any segments where they are to be used.
 
 Cylinders used for the plan need to be entered in the table of _Available gases_. In the column
 _Type_ select the appropriate cylinder size by using the dropdown list that appears when
