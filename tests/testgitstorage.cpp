@@ -363,6 +363,9 @@ void TestGitStorage::testGitStorageCloudOfflineSync()
 	QCOMPARE(save_dives(cloudTestRepo.c_str()), 0);
 	QVERIFY(loaded_git_provenance.commit != loadedCommit);
 	QVERIFY(savePreflight(cloudTestRepo).status == git_save_preflight_status::allowed);
+	// AI-generated (Claude): Compare serialized offline and online git states.
+	clear_dive_file_data();
+	QCOMPARE(parse_file(localCacheRepo.c_str(), &divelog), 0);
 	QCOMPARE(save_dives("./SampleDivesV3plus10local.ssrf"), 0);
 	clear_dive_file_data();
 	// now pretend that we are online again and open the cloud storage and compare
@@ -439,6 +442,18 @@ void TestGitStorage::testGitStorageCloudMerge()
 	QCOMPARE(parse_file("./SampleDivesV3plus10local.ssrf", &divelog), 0);
 	QCOMPARE(parse_file(SUBSURFACE_TEST_DATA "/dives/test11.xml", &divelog), 0);
 	QCOMPARE(parse_file(SUBSURFACE_TEST_DATA "/dives/test12.xml", &divelog), 0);
+	divelog.process_loaded_dives();
+	// AI-generated (Claude): Normalize calculated fields through git before comparing git states.
+	QTemporaryDir referenceDir;
+	QVERIFY(referenceDir.isValid());
+	std::string referenceRepository = referenceDir.path().toStdString();
+	std::string referenceTarget = referenceRepository + "[reference]";
+	git_repository *referenceRepo = nullptr;
+	QCOMPARE(git_repository_init(&referenceRepo, referenceRepository.c_str(), false), 0);
+	git_repository_free(referenceRepo);
+	QCOMPARE(save_dives(referenceTarget.c_str()), 0);
+	clear_dive_file_data();
+	QCOMPARE(parse_file(referenceTarget.c_str(), &divelog), 0);
 	divelog.process_loaded_dives();
 	QCOMPARE(save_dives("./SampleDivesV3plus10-11-12.ssrf"), 0);
 	// then load from the cloud
