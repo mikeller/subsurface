@@ -14,6 +14,7 @@
 #include <fcntl.h>
 #include <git2.h>
 #include <memory>
+#include <unordered_set>
 
 #include "commands/command.h"
 #include "dive.h"
@@ -39,6 +40,10 @@
 #include "tag.h"
 #include "tanksensormapping.h"
 #include "subsurface-time.h"
+
+// AI-generated (Claude): Internal remote half of the explicit replacement operation.
+int refresh_remote_for_replacement(struct git_info *, struct git_oid *remote_tip);
+int push_git_replacement(struct git_info *, const struct git_oid *commit_id);
 
 #define VA_BUF(b, fmt) do { va_list args; va_start(args, fmt); put_vformat(b, fmt, args); va_end(args); } while (0)
 
@@ -850,8 +855,9 @@ static void save_divesites(git_repository *repo, struct dir *tree)
 	put_format(&dirname, "01-Divesites");
 	subdir = new_directory(repo, tree, &dirname);
 
-	divelog.sites.purge_empty();
 	for (const auto &ds: divelog.sites) {
+		if (ds->is_empty())
+			continue;
 		membuffer b;
 		membuffer site_file_name;
 		put_format(&site_file_name, "Site-%08x", ds->uuid);
@@ -941,14 +947,13 @@ static void save_filter_presets(git_repository *repo, struct dir *tree)
 
 static int create_git_tree(git_repository *repo, struct dir *root, bool select_only, bool cached_ok)
 {
+	// AI-generated (Claude): Track serialized trips locally so failed saves do not mutate the log.
+	std::unordered_set<const dive_trip *> saved_trips;
 	git_storage_update_progress(translate("gettextFromC", "Start saving data"));
 	save_settings(repo, root);
 
 	save_divesites(repo, root);
 	save_filter_presets(repo, root);
-
-	for (auto &trip: divelog.trips)
-		trip->saved = false;
 
 	/* save the dives */
 	git_storage_update_progress(translate("gettextFromC", "Start saving dives"));
@@ -972,9 +977,9 @@ static int create_git_tree(git_repository *repo, struct dir *root, bool select_o
 
 		if (trip) {
 			/* Did we already save this trip? */
-			if (trip->saved)
+			if (saved_trips.count(trip))
 				continue;
-			trip->saved = 1;
+			saved_trips.insert(trip);
 
 			/* Pass that new subdirectory in for save-trip */
 			save_one_trip(repo, tree, trip, &tm, cached_ok);
@@ -1350,4 +1355,87 @@ int git_save_dives(struct git_info *info, bool select_only)
 		return report_error(translate("gettextFromC", "Failed to save dives to %s[%s] (%s)"), info->url.c_str(), info->branch.c_str(), strerror(errno));
 
 	return do_git_save(info, select_only, false);
+}
+
+// AI-generated (Claude): Create a detached complete snapshot whose sole parent
+// is the freshly fetched remote tip.  The local branch and provenance are only
+// changed after the ordinary fast-forward push succeeds.
+int git_replace_dives(struct git_info *info)
+{
+	git_save_preflight_result preflight = preflight_git_save(info);
+	if (preflight.status == git_save_preflight_status::allowed)
+		return report_error("%s", translate("gettextFromC", "This destination does not require replacement; use the normal save operation"));
+	if (preflight.status == git_save_preflight_status::error)
+		return report_error(translate("gettextFromC", "Unable to inspect git storage destination (%s)"), preflight.error.c_str());
+
+	if (!info->repo && git_repository_open(&info->repo, info->localdir.c_str()))
+		return report_error(translate("gettextFromC", "Failed to open git storage destination %s[%s]"), info->url.c_str(), info->branch.c_str());
+
+	git_oid remote_tip;
+	if (refresh_remote_for_replacement(info, &remote_tip))
+		return -1;
+
+	struct dir snapshot;
+	git_oid tree_id;
+	if (git_treebuilder_new(&snapshot.files, info->repo, nullptr))
+		return report_error("git treebuilder failed");
+	if (create_git_tree(info->repo, &snapshot, false, false) || write_git_tree(info->repo, &snapshot, &tree_id))
+		return report_error("git replacement tree write failed");
+
+	git_commit *parent = nullptr;
+	git_tree *tree = nullptr;
+	git_signature *author = nullptr;
+	git_oid commit_id;
+	if (git_commit_lookup(&parent, info->repo, &remote_tip) || git_tree_lookup(&tree, info->repo, &tree_id) ||
+	    get_authorship(info->repo, &author)) {
+		git_commit_free(parent);
+		git_tree_free(tree);
+		git_signature_free(author);
+		return report_error("Could not prepare git storage replacement commit");
+	}
+
+	membuffer commit_msg;
+	put_format(&commit_msg, "Replace dive log with confirmed snapshot.\n\nCreated by %s\n", subsurface_user_agent().c_str());
+	int error = git_commit_create_v(&commit_id, info->repo, nullptr, author, author, nullptr,
+					mb_cstring(&commit_msg), tree, 1, parent);
+	git_signature_free(author);
+	git_tree_free(tree);
+	if (error) {
+		git_commit_free(parent);
+		return report_error("Git replacement commit create failed");
+	}
+
+	if (push_git_replacement(info, &commit_id)) {
+		git_commit_free(parent);
+		return -1;
+	}
+
+	git_reference *local_ref = nullptr;
+	git_reference *updated_ref = nullptr;
+	if (git_branch_lookup(&local_ref, info->repo, info->branch.c_str(), GIT_BRANCH_LOCAL)) {
+		git_reference_free(local_ref);
+		git_commit_free(parent);
+		return report_error("Remote replacement succeeded, but the local cache could not be updated");
+	}
+	bool branch_is_head = git_branch_is_head(local_ref) == 1;
+	if (git_reference_set_target(&updated_ref, local_ref, &commit_id, "Subsurface replacement event")) {
+		git_reference_free(local_ref);
+		git_commit_free(parent);
+		return report_error("Remote replacement succeeded, but the local cache could not be updated");
+	}
+	git_reference_free(local_ref);
+	git_reference_free(updated_ref);
+
+	if (branch_is_head && !git_repository_is_bare(info->repo)) {
+		git_object *replacement = nullptr;
+		git_checkout_options opts = GIT_CHECKOUT_OPTIONS_INIT;
+		opts.checkout_strategy = GIT_CHECKOUT_FORCE;
+		if (git_object_lookup(&replacement, info->repo, &commit_id, GIT_OBJ_COMMIT) ||
+		    git_reset(info->repo, replacement, GIT_RESET_HARD, &opts))
+			report_error("Git storage replacement was saved, but the local worktree could not be updated");
+		git_object_free(replacement);
+	}
+	git_commit_free(parent);
+	set_git_provenance(info, &commit_id);
+	return 0;
 }

@@ -14,6 +14,9 @@ private slots:
 	void testGitStorageLocal_data();
 	void testGitStorageLocal();
 	void testGitSavePreflight();
+	void testGitStorageReplacement();
+	void testGitStoragePartialReplacement();
+	void testGitStorageReplacementConcurrentUpdate();
 	void testGitStorageCloud();
 	void testGitStorageCloudOfflineSync();
 	void testGitStorageCloudMerge();

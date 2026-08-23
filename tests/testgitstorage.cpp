@@ -109,6 +109,136 @@ static void createTestBranches(git_repository *repo)
 	git_treebuilder_free(builder);
 }
 
+// AI-generated (Claude): Local bare remotes make replacement safety tests
+// deterministic without depending on the shared cloud test service.
+static bool pushMainBranch(git_repository *repo)
+{
+	git_remote *origin = nullptr;
+	if (git_remote_lookup(&origin, repo, "origin"))
+		return false;
+	char refName[] = "refs/heads/main";
+	char *ref = refName;
+	git_strarray refspec { &ref, 1 };
+	git_push_options opts = GIT_PUSH_OPTIONS_INIT;
+	int result = git_remote_push(origin, &refspec, &opts);
+	git_remote_free(origin);
+	return result == 0;
+}
+
+static bool createReplacementRemote(const QString &root, std::string &remote, std::string &cache)
+{
+	std::string seed = QDir(root).filePath("seed").toStdString();
+	remote = QDir(root).filePath("remote.git").toStdString();
+	cache = QDir(root).filePath("cache").toStdString();
+	if (!QDir().mkdir(QString::fromStdString(seed)))
+		return false;
+
+	git_repository *repo = nullptr;
+	if (git_repository_init(&repo, seed.c_str(), false))
+		return false;
+	git_repository_free(repo);
+	bool localOnly = git_local_only;
+	git_local_only = true;
+	int saveResult = save_dives((seed + "[main]").c_str());
+	git_local_only = localOnly;
+	if (saveResult)
+		return false;
+	if (git_repository_init(&repo, remote.c_str(), true))
+		return false;
+	git_repository_free(repo);
+	if (git_repository_open(&repo, seed.c_str()))
+		return false;
+	git_remote *origin = nullptr;
+	if (git_remote_create(&origin, repo, "origin", remote.c_str())) {
+		git_repository_free(repo);
+		return false;
+	}
+	git_remote_free(origin);
+	bool pushed = pushMainBranch(repo);
+	git_repository_free(repo);
+	if (!pushed)
+		return false;
+
+	git_clone_options cloneOptions = GIT_CLONE_OPTIONS_INIT;
+	cloneOptions.checkout_branch = "main";
+	if (git_clone(&repo, remote.c_str(), cache.c_str(), &cloneOptions))
+		return false;
+	git_repository_free(repo);
+	return true;
+}
+
+static void setReplacementInfo(git_info &info, const std::string &remote, const std::string &cache)
+{
+	info.url = remote;
+	info.branch = "main";
+	info.localdir = cache;
+	info.transport = RT_OTHER;
+}
+
+static std::string branchHead(const std::string &repository)
+{
+	git_repository *repo = nullptr;
+	if (git_repository_open(&repo, repository.c_str()))
+		return std::string();
+	std::string result = get_sha(repo, "main");
+	git_repository_free(repo);
+	return result;
+}
+
+static bool isDirectChild(const std::string &repository, const std::string &child, const std::string &parent)
+{
+	git_repository *repo = nullptr;
+	git_oid childId;
+	git_commit *commit = nullptr;
+	bool result = !git_repository_open(&repo, repository.c_str()) &&
+		!git_oid_fromstr(&childId, child.c_str()) &&
+		!git_commit_lookup(&commit, repo, &childId) &&
+		git_commit_parentcount(commit) == 1 &&
+		!git_oid_strcmp(git_commit_parent_id(commit, 0), parent.c_str());
+	git_commit_free(commit);
+	git_repository_free(repo);
+	return result;
+}
+
+static std::string concurrentRepository;
+static std::string concurrentCommit;
+
+static bool appendCommit(const std::string &repository, bool push, std::string &newCommit)
+{
+	git_repository *repo = nullptr;
+	git_reference *head = nullptr;
+	git_commit *parent = nullptr;
+	git_tree *tree = nullptr;
+	git_signature *signature = nullptr;
+	git_oid commitId;
+	bool ok = !git_repository_open(&repo, repository.c_str()) &&
+		!git_branch_lookup(&head, repo, "main", GIT_BRANCH_LOCAL) &&
+		!git_reference_peel(reinterpret_cast<git_object **>(&parent), head, GIT_OBJ_COMMIT) &&
+		!git_commit_tree(&tree, parent) &&
+		!git_signature_now(&signature, "Subsurface test", "test@example.com") &&
+		!git_commit_create_v(&commitId, repo, "refs/heads/main", signature, signature, nullptr,
+				     "test update", tree, 1, parent) && (!push || pushMainBranch(repo));
+	if (ok) {
+		char id[GIT_OID_HEXSZ + 1];
+		git_oid_tostr(id, sizeof(id), &commitId);
+		newCommit = id;
+	}
+	git_signature_free(signature);
+	git_tree_free(tree);
+	git_commit_free(parent);
+	git_reference_free(head);
+	git_repository_free(repo);
+	return ok;
+}
+
+static int replacementProgress(const char *text)
+{
+	if (same_string(text, "Push confirmed replacement to remote storage") && concurrentCommit.empty() &&
+	    !appendCommit(concurrentRepository, true, concurrentCommit))
+		return -1;
+	return 0;
+}
+
 void TestGitStorage::initTestCase()
 {
 	// Set UTF8 text codec as in real applications
@@ -322,6 +452,111 @@ void TestGitStorage::testGitSavePreflight()
 
 	std::string invalidTarget = destinationDir.filePath("missing").toStdString() + "[main]";
 	QVERIFY(savePreflight(invalidTarget).status == git_save_preflight_status::error);
+}
+
+// AI-generated (Claude): Verify a complete replacement writes the current log,
+// retains the prior remote tip as its direct parent, and preflight never pushes.
+void TestGitStorage::testGitStorageReplacement()
+{
+	QTemporaryDir fixture;
+	QVERIFY(fixture.isValid());
+	QCOMPARE(parse_file(SUBSURFACE_TEST_DATA "/dives/test10.xml", &divelog), 0);
+	divelog.dives.front()->notes = "obsolete remote dive";
+	std::string remote;
+	std::string cache;
+	QVERIFY(createReplacementRemote(fixture.path(), remote, cache));
+	std::string oldRemoteHead = branchHead(remote);
+	QVERIFY(!oldRemoteHead.empty());
+	std::string unpublishedCacheHead;
+	QVERIFY(appendCommit(cache, false, unpublishedCacheHead));
+	QVERIFY(unpublishedCacheHead != oldRemoteHead);
+
+	clear_dive_file_data();
+	QCOMPARE(parse_file(SUBSURFACE_TEST_DATA "/dives/SampleDivesV2.ssrf", &divelog), 0);
+	const size_t expectedDives = divelog.dives.size();
+	git_info info;
+	setReplacementInfo(info, remote, cache);
+	QVERIFY(preflight_git_save(&info).status == git_save_preflight_status::replacement_confirmation_required);
+	QCOMPARE(branchHead(remote), oldRemoteHead);
+	QCOMPARE(git_replace_dives(&info), 0);
+
+	std::string replacementHead = branchHead(remote);
+	QVERIFY(replacementHead != oldRemoteHead);
+	QVERIFY(replacementHead != unpublishedCacheHead);
+	QVERIFY(isDirectChild(remote, replacementHead, oldRemoteHead));
+	clear_dive_file_data();
+	QCOMPARE(parse_file((cache + "[main]").c_str(), &divelog), 0);
+	QCOMPARE(divelog.dives.size(), expectedDives);
+	for (const auto &dive: divelog.dives)
+		QVERIFY(dive->notes != "obsolete remote dive");
+}
+
+// AI-generated (Claude): A confirmed snapshot is complete even when the
+// current log contains only part of the destination's former dive set.
+void TestGitStorage::testGitStoragePartialReplacement()
+{
+	QTemporaryDir fixture;
+	QVERIFY(fixture.isValid());
+	QCOMPARE(parse_file(SUBSURFACE_TEST_DATA "/dives/SampleDivesV2.ssrf", &divelog), 0);
+	std::string remote;
+	std::string cache;
+	QVERIFY(createReplacementRemote(fixture.path(), remote, cache));
+
+	clear_dive_file_data();
+	QCOMPARE(parse_file(SUBSURFACE_TEST_DATA "/dives/SampleDivesV2.ssrf", &divelog), 0);
+	QVERIFY(divelog.dives.size() > 1);
+	while (divelog.dives.size() > 1)
+		divelog.delete_multiple_dives(std::vector<dive *>{ divelog.dives.back().get() });
+	const timestamp_t retainedDive = divelog.dives.front()->when;
+	git_info info;
+	setReplacementInfo(info, remote, cache);
+	QCOMPARE(git_replace_dives(&info), 0);
+
+	clear_dive_file_data();
+	QCOMPARE(parse_file((cache + "[main]").c_str(), &divelog), 0);
+	QCOMPARE(divelog.dives.size(), size_t(1));
+	QCOMPARE(divelog.dives.front()->when, retainedDive);
+}
+
+// AI-generated (Claude): Advance the bare remote after replacement refresh but
+// before its push, proving the non-forced push rejects the stale confirmation.
+void TestGitStorage::testGitStorageReplacementConcurrentUpdate()
+{
+	QTemporaryDir fixture;
+	QVERIFY(fixture.isValid());
+	QCOMPARE(parse_file(SUBSURFACE_TEST_DATA "/dives/SampleDivesV2.ssrf", &divelog), 0);
+	std::string remote;
+	std::string cache;
+	QVERIFY(createReplacementRemote(fixture.path(), remote, cache));
+	concurrentRepository = QDir(fixture.path()).filePath("concurrent").toStdString();
+	git_repository *repo = nullptr;
+	git_clone_options cloneOptions = GIT_CLONE_OPTIONS_INIT;
+	cloneOptions.checkout_branch = "main";
+	QCOMPARE(git_clone(&repo, remote.c_str(), concurrentRepository.c_str(), &cloneOptions), 0);
+	git_repository_free(repo);
+	const std::string cacheHeadBefore = branchHead(cache);
+
+	clear_dive_file_data();
+	QCOMPARE(parse_file(SUBSURFACE_TEST_DATA "/dives/test10.xml", &divelog), 0);
+	const size_t expectedDives = divelog.dives.size();
+	const timestamp_t expectedWhen = divelog.dives.front()->when;
+	const std::string provenanceBefore = loaded_git_provenance.commit;
+	concurrentCommit.clear();
+	set_git_update_cb(&replacementProgress);
+	git_info info;
+	setReplacementInfo(info, remote, cache);
+	int replacementResult = git_replace_dives(&info);
+	set_git_update_cb(nullptr);
+	QVERIFY(replacementResult != 0);
+
+	QVERIFY(!concurrentCommit.empty());
+	QCOMPARE(branchHead(remote), concurrentCommit);
+	QCOMPARE(branchHead(cache), cacheHeadBefore);
+	QCOMPARE(divelog.dives.size(), expectedDives);
+	QCOMPARE(divelog.dives.front()->when, expectedWhen);
+	QCOMPARE(loaded_git_provenance.commit, provenanceBefore);
+	concurrentRepository.clear();
+	concurrentCommit.clear();
 }
 
 void TestGitStorage::testGitStorageCloud()

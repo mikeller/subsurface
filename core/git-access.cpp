@@ -659,6 +659,145 @@ static std::string getProxyString()
 	return std::string();
 }
 
+// AI-generated (Claude): Replacement refresh is deliberately fetch-only.  In
+// particular, it must not use sync_with_remote(), which may publish cached
+// local commits before the user-authorized snapshot has been created.
+int refresh_remote_for_replacement(struct git_info *info, git_oid *remote_tip)
+{
+	git_remote *origin = nullptr;
+	git_config *conf = nullptr;
+	git_reference *remote_ref = nullptr;
+
+	if (git_local_only)
+		return report_error("%s", translate("gettextFromC", "Cannot replace remote storage while working offline"));
+	if (!info->repo || info->transport == RT_LOCAL)
+		return report_error("%s", translate("gettextFromC", "Replacement requires a remote git storage destination"));
+
+	if (git_repository_config(&conf, info->repo))
+		return report_error("Unable to read git storage configuration");
+	std::string proxy_string = getProxyString();
+	if (info->transport == RT_HTTPS && !proxy_string.empty())
+		git_config_set_string(conf, "http.proxy", proxy_string.c_str());
+	else
+		git_config_delete_entry(conf, "http.proxy");
+	git_config_free(conf);
+
+	if (git_remote_lookup(&origin, info->repo, "origin"))
+		return report_error("Repository '%s' origin lookup failed", info->url.c_str());
+
+	git_fetch_options opts = GIT_FETCH_OPTIONS_INIT;
+	opts.callbacks.transfer_progress = &transfer_progress_cb;
+	auth_attempt = 0;
+	if (info->transport == RT_SSH)
+		opts.callbacks.credentials = credential_ssh_cb;
+	else if (info->transport == RT_HTTPS)
+		opts.callbacks.credentials = credential_https_cb;
+	opts.callbacks.certificate_check = certificate_check_cb;
+	opts.prune = GIT_FETCH_PRUNE;
+	git_storage_update_progress(translate("gettextFromC", "Refresh remote storage before replacement"));
+	int error = git_remote_fetch(origin, nullptr, &opts, nullptr);
+	git_remote_free(origin);
+	if (error)
+		return report_error("%s", translate("gettextFromC", "Could not refresh remote storage; try again before confirming replacement"));
+
+	std::string remote_branch = "refs/remotes/origin/" + info->branch;
+	error = git_reference_lookup(&remote_ref, info->repo, remote_branch.c_str());
+	if (error == GIT_ENOTFOUND)
+		return report_error("%s", translate("gettextFromC", "The remote branch is absent; use the normal save operation"));
+	if (error)
+		return report_error("%s", translate("gettextFromC", "Could not inspect the refreshed remote branch"));
+
+	const git_oid *target = git_reference_target(remote_ref);
+	if (!target) {
+		git_reference_free(remote_ref);
+		return report_error("%s", translate("gettextFromC", "Could not inspect the refreshed remote branch"));
+	}
+	git_commit *commit = nullptr;
+	git_tree *tree = nullptr;
+	error = git_commit_lookup(&commit, info->repo, target);
+	if (!error)
+		error = git_commit_tree(&tree, commit);
+	if (error) {
+		git_tree_free(tree);
+		git_commit_free(commit);
+		git_reference_free(remote_ref);
+		return report_error("%s", translate("gettextFromC", "Could not inspect the refreshed remote branch"));
+	}
+	if (git_tree_entrycount(tree) == 0) {
+		git_tree_free(tree);
+		git_commit_free(commit);
+		git_reference_free(remote_ref);
+		return report_error("%s", translate("gettextFromC", "The remote branch is empty; use the normal save operation"));
+	}
+	git_tree_free(tree);
+	git_commit_free(commit);
+	git_oid_cpy(remote_tip, target);
+	git_reference_free(remote_ref);
+	return 0;
+}
+
+struct replacement_push_status {
+	std::string rejection;
+};
+
+static int replacement_push_update_reference(const char *, const char *status, void *payload)
+{
+	if (status)
+		static_cast<replacement_push_status *>(payload)->rejection = status;
+	return 0;
+}
+
+// AI-generated (Claude): Push a temporary ref without a force marker.  A
+// concurrent remote update therefore causes a normal non-fast-forward rejection.
+int push_git_replacement(struct git_info *info, const git_oid *commit_id)
+{
+	static const char replacement_ref[] = "refs/subsurface/replacement";
+	git_reference *temporary = nullptr;
+	git_remote *origin = nullptr;
+	replacement_push_status status;
+
+	git_remote_sync_successful = false;
+	if (git_reference_create(&temporary, info->repo, replacement_ref, commit_id, 1,
+				 "Prepare Subsurface replacement push"))
+		return report_error("Could not prepare git storage replacement");
+	git_reference_free(temporary);
+
+	if (git_remote_lookup(&origin, info->repo, "origin")) {
+		if (!git_reference_lookup(&temporary, info->repo, replacement_ref)) {
+			git_reference_delete(temporary);
+			git_reference_free(temporary);
+		}
+		return report_error("Repository '%s' origin lookup failed", info->url.c_str());
+	}
+
+	std::string push_spec = std::string(replacement_ref) + ":refs/heads/" + info->branch;
+	char *spec = push_spec.data();
+	git_strarray refspec { &spec, 1 };
+	git_push_options opts = GIT_PUSH_OPTIONS_INIT;
+	opts.callbacks.push_transfer_progress = &push_transfer_progress_cb;
+	opts.callbacks.push_update_reference = &replacement_push_update_reference;
+	opts.callbacks.payload = &status;
+	auth_attempt = 0;
+	if (info->transport == RT_SSH)
+		opts.callbacks.credentials = credential_ssh_cb;
+	else if (info->transport == RT_HTTPS)
+		opts.callbacks.credentials = credential_https_cb;
+	opts.callbacks.certificate_check = certificate_check_cb;
+	git_storage_update_progress(translate("gettextFromC", "Push confirmed replacement to remote storage"));
+	int error = git_remote_push(origin, &refspec, &opts);
+	git_remote_free(origin);
+
+	if (!git_reference_lookup(&temporary, info->repo, replacement_ref)) {
+		git_reference_delete(temporary);
+		git_reference_free(temporary);
+	}
+	if (error || !status.rejection.empty())
+		return report_error("%s", translate("gettextFromC", "Remote storage changed while replacement was being saved; refresh and confirm replacement again"));
+
+	git_remote_sync_successful = true;
+	return 0;
+}
+
 /* this is (so far) only used by the git storage tests to remove a remote branch
  * it will print out errors, but not return an error (as this isn't a function that
  * we test as part of the tests, it's a helper to not leave loads of dead branches on

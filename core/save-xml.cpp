@@ -577,6 +577,16 @@ int save_dives(const char *filename)
 	return save_dives_logic(filename, false, false);
 }
 
+// AI-generated (Claude): This separate entry point is called only after the
+// caller has displayed and received replacement confirmation.
+int replace_dives(const char *filename)
+{
+	git_info info;
+	if (!is_git_repository(filename, &info))
+		return report_error("%s", translate("gettextFromC", "Replacement is only available for git storage"));
+	return git_replace_dives(&info);
+}
+
 static void save_filter_presets(struct membuffer *b)
 {
 	if (divelog.filter_presets.empty())
