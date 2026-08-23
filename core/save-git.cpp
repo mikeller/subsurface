@@ -1004,6 +1004,56 @@ static git_object *try_to_find_parent(const char *hex_id, git_repository *repo)
 	return (git_object *)commit;
 }
 
+// AI-generated (Claude)
+git_save_preflight_result preflight_git_save(const struct git_info *info)
+{
+	git_info inspected;
+	inspected.url = info->url;
+	inspected.branch = info->branch;
+	inspected.localdir = info->localdir;
+	inspected.transport = info->transport;
+
+	std::string repository;
+	if (info->transport != RT_LOCAL)
+		repository = canonical_git_repository(info);
+
+	if (info->transport == RT_LOCAL || loaded_git_provenance.repository != repository ||
+	    loaded_git_provenance.branch != info->branch) {
+		if (git_repository_open(&inspected.repo, info->localdir.c_str()))
+			return { git_save_preflight_status::error, "unable to open destination repository" };
+		repository = canonical_git_repository(&inspected);
+	}
+
+	if (!loaded_git_provenance.empty() && loaded_git_provenance.repository == repository &&
+	    loaded_git_provenance.branch == info->branch)
+		return { git_save_preflight_status::allowed, std::string() };
+
+	if (!inspected.repo && git_repository_open(&inspected.repo, info->localdir.c_str()))
+		return { git_save_preflight_status::error, "unable to open destination repository" };
+
+	git_reference *ref = nullptr;
+	int ret = git_branch_lookup(&ref, inspected.repo, info->branch.c_str(), GIT_BRANCH_LOCAL);
+	if (ret == GIT_ENOTFOUND)
+		return { git_save_preflight_status::allowed, std::string() };
+	if (ret)
+		return { git_save_preflight_status::error, "unable to inspect destination branch" };
+
+	git_commit *commit = nullptr;
+	git_tree *tree = nullptr;
+	ret = git_reference_peel(reinterpret_cast<git_object **>(&commit), ref, GIT_OBJ_COMMIT);
+	if (!ret)
+		ret = git_commit_tree(&tree, commit);
+	git_reference_free(ref);
+	git_commit_free(commit);
+	if (ret)
+		return { git_save_preflight_status::error, "unable to inspect destination tree" };
+
+	bool empty = git_tree_entrycount(tree) == 0;
+	git_tree_free(tree);
+	return { empty ? git_save_preflight_status::allowed : git_save_preflight_status::replacement_confirmation_required,
+		 std::string() };
+}
+
 static int notify_cb(git_checkout_notify_t,
 	const char *path,
 	const git_diff_file *,
@@ -1105,19 +1155,21 @@ static int create_new_commit(struct git_info *info, git_oid *tree_id, bool creat
 		return report_error("Invalid branch name '%s'", info->branch.c_str());
 	case GIT_ENOTFOUND: /* We'll happily create it */
 		ref = NULL;
-		parent = try_to_find_parent(saved_git_id.c_str(), info->repo);
+		parent = try_to_find_parent(loaded_git_provenance.commit.c_str(), info->repo);
 		break;
 	case 0:
 		if (git_reference_peel(&parent, ref, GIT_OBJ_COMMIT))
 			return report_error("Unable to look up parent in branch '%s'", info->branch.c_str());
 
-		if (!saved_git_id.empty()) {
+		if (!loaded_git_provenance.commit.empty()) {
 			if (!existing_filename.empty() && verbose)
 				report_info("existing filename %s\n", existing_filename.c_str());
 			const git_oid *id = git_commit_id((const git_commit *) parent);
 			/* if we are saving to the same git tree we got this from, let's make
 			 * sure there is no confusion */
-			if (existing_filename == info->url && git_oid_strcmp(id, saved_git_id.c_str()))
+			if (loaded_git_provenance.repository == canonical_git_repository(info) &&
+			    loaded_git_provenance.branch == info->branch &&
+			    git_oid_strcmp(id, loaded_git_provenance.commit.c_str()))
 				return report_error("The git branch does not match the git parent of the source");
 		}
 
@@ -1186,7 +1238,7 @@ static int create_new_commit(struct git_info *info, git_oid *tree_id, bool creat
 	 * the tree when we actually try to store the dive data
 	 */
 	if (! create_empty)
-		set_git_id(&commit_id);
+		set_git_provenance(info, &commit_id);
 
 	return 0;
 }
@@ -1233,7 +1285,7 @@ int do_git_save(struct git_info *info, bool select_only, bool create_empty)
 	 * Check if we can do the cached writes - we need to
 	 * have the original git commit we loaded in the repo
 	 */
-	cached_ok = try_to_find_parent(saved_git_id.c_str(), info->repo);
+	cached_ok = try_to_find_parent(loaded_git_provenance.commit.c_str(), info->repo);
 
 	/* Start with an empty tree: no subdirectories, no files */
 	if (git_treebuilder_new(&tree.files, info->repo, NULL))
@@ -1262,6 +1314,12 @@ int do_git_save(struct git_info *info, bool select_only, bool create_empty)
 
 int git_save_dives(struct git_info *info, bool select_only)
 {
+	git_save_preflight_result preflight = preflight_git_save(info);
+	if (preflight.status == git_save_preflight_status::replacement_confirmation_required)
+		return report_error("%s", translate("gettextFromC", "Saving would replace existing git storage data; explicit confirmation is required"));
+	if (preflight.status == git_save_preflight_status::error)
+		return report_error(translate("gettextFromC", "Unable to inspect git storage destination (%s)"), preflight.error.c_str());
+
 	/*
 	 * First, just try to open the local git repo without
 	 * doing any remote updates at all. If networking is

@@ -271,11 +271,12 @@ static int parse_file_buffer(const char *filename, std::string &mem, struct dive
 
 bool remote_repo_uptodate(const char *filename, struct git_info *info)
 {
-	std::string current_sha = saved_git_id;
+	git_provenance current = loaded_git_provenance;
 
 	if (is_git_repository(filename, info) && open_git_repository(info)) {
 		std::string sha = get_sha(info->repo, info->branch);
-		if (!sha.empty() && current_sha == sha) {
+		if (!sha.empty() && current.repository == canonical_git_repository(info) &&
+		    current.branch == info->branch && current.commit == sha) {
 			report_info("already have loaded SHA %s - don't load again", sha.c_str());
 			return true;
 		}

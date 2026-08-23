@@ -22,6 +22,8 @@
 #include <fcntl.h>
 #include <stdarg.h>
 #include <git2.h>
+#include <QDir>
+#include <QFileInfo>
 #include <QString>
 #include <QRegularExpression>
 #include <QNetworkProxy>
@@ -137,6 +139,39 @@ std::string normalize_cloud_name(const std::string &remote_in)
 	QString ri = QString::fromStdString(remote_in);
 	ri.replace(QRegularExpression(CLOUD_HOST_PATTERN), CLOUD_HOST_GENERIC "/");
 	return ri.toStdString();
+}
+
+// AI-generated (Claude)
+static std::string canonical_remote_url(const std::string &remote)
+{
+	QString result = QString::fromStdString(remote);
+	result.replace(QRegularExpression(CLOUD_HOST_PATTERN), CLOUD_HOST_GENERIC);
+	while (result.size() > 1 && result.endsWith('/'))
+		result.chop(1);
+	return result.toStdString();
+}
+
+std::string canonical_git_repository(const struct git_info *info)
+{
+	if (info->transport != RT_LOCAL)
+		return canonical_remote_url(info->url);
+
+	if (info->repo) {
+		git_remote *origin;
+		if (!git_remote_lookup(&origin, info->repo, "origin")) {
+			const char *url = git_remote_url(origin);
+			std::string result = url ? canonical_remote_url(url) : std::string();
+			git_remote_free(origin);
+			if (!result.empty())
+				return result;
+		}
+	}
+
+	QFileInfo file(QString::fromStdString(info->localdir));
+	QString path = file.canonicalFilePath();
+	if (path.isEmpty())
+		path = file.absoluteFilePath();
+	return QDir::cleanPath(path).toStdString();
 }
 
 std::string get_local_dir(const std::string &url, const std::string &branch)
@@ -453,7 +488,7 @@ static int try_to_git_merge(struct git_info *info, git_reference **local_p, git_
 		}
 		if (git_reference_set_target(local_p, *local_p, &commit_oid, "Subsurface merge event"))
 			goto write_error;
-		set_git_id(&commit_oid);
+		set_git_provenance(info, &commit_oid);
 		git_signature_free(author);
 		if (verbose)
 			report_info("git storage: successfully merged repositories");
