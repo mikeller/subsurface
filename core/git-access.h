@@ -50,6 +50,7 @@ struct git_provenance {
 
 enum class git_save_preflight_status {
 	allowed,
+	destination_missing,
 	replacement_confirmation_required,
 	error
 };
@@ -73,6 +74,8 @@ extern int git_save_dives(struct git_info *, bool select_only);
 // AI-generated (Claude): Explicit whole-log replacement entry points.
 extern int replace_dives(const char *filename);
 extern int git_replace_dives(struct git_info *);
+extern int refresh_remote_for_replacement(struct git_info *, struct git_oid *remote_tip);
+extern int push_git_replacement(struct git_info *, const struct git_oid *commit_id);
 extern int git_load_dives(struct git_info *, struct divelog *log);
 extern int do_git_save(struct git_info *, bool select_only, bool create_empty);
 extern int git_create_local_repo(const std::string &filename);

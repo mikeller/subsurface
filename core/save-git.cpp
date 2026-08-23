@@ -41,10 +41,6 @@
 #include "tanksensormapping.h"
 #include "subsurface-time.h"
 
-// AI-generated (Claude): Internal remote half of the explicit replacement operation.
-int refresh_remote_for_replacement(struct git_info *, struct git_oid *remote_tip);
-int push_git_replacement(struct git_info *, const struct git_oid *commit_id);
-
 #define VA_BUF(b, fmt) do { va_list args; va_start(args, fmt); put_vformat(b, fmt, args); va_end(args); } while (0)
 
 static void cond_put_format(int cond, struct membuffer *b, const char *fmt, ...)
@@ -852,11 +848,17 @@ static void save_divesites(git_repository *repo, struct dir *tree)
 {
 	struct dir *subdir;
 	membuffer dirname;
+	// AI-generated (Claude): An empty site still carries referential data when a dive uses its UUID.
+	std::unordered_set<const dive_site *> referenced_sites;
+	for (const auto &dive: divelog.dives) {
+		if (dive->dive_site)
+			referenced_sites.insert(dive->dive_site);
+	}
 	put_format(&dirname, "01-Divesites");
 	subdir = new_directory(repo, tree, &dirname);
 
 	for (const auto &ds: divelog.sites) {
-		if (ds->is_empty())
+		if (ds->is_empty() && !referenced_sites.count(ds.get()))
 			continue;
 		membuffer b;
 		membuffer site_file_name;
@@ -1018,14 +1020,19 @@ git_save_preflight_result preflight_git_save(const struct git_info *info)
 	inspected.localdir = info->localdir;
 	inspected.transport = info->transport;
 
-	std::string repository;
-	if (info->transport != RT_LOCAL)
-		repository = canonical_git_repository(info);
+	std::string repository = canonical_git_repository(info);
+	if (!loaded_git_provenance.empty() && loaded_git_provenance.repository == repository &&
+	    loaded_git_provenance.branch == info->branch)
+		return { git_save_preflight_status::allowed, std::string() };
 
-	if (info->transport == RT_LOCAL || loaded_git_provenance.repository != repository ||
-	    loaded_git_provenance.branch != info->branch) {
-		if (git_repository_open(&inspected.repo, info->localdir.c_str()))
+	git_repository *repo = info->repo;
+	if (!repo) {
+		int ret = git_repository_open(&inspected.repo, info->localdir.c_str());
+		if (ret == GIT_ENOTFOUND)
+			return { git_save_preflight_status::destination_missing, std::string() };
+		if (ret)
 			return { git_save_preflight_status::error, "unable to open destination repository" };
+		repo = inspected.repo;
 		repository = canonical_git_repository(&inspected);
 	}
 
@@ -1033,11 +1040,8 @@ git_save_preflight_result preflight_git_save(const struct git_info *info)
 	    loaded_git_provenance.branch == info->branch)
 		return { git_save_preflight_status::allowed, std::string() };
 
-	if (!inspected.repo && git_repository_open(&inspected.repo, info->localdir.c_str()))
-		return { git_save_preflight_status::error, "unable to open destination repository" };
-
 	git_reference *ref = nullptr;
-	int ret = git_branch_lookup(&ref, inspected.repo, info->branch.c_str(), GIT_BRANCH_LOCAL);
+	int ret = git_branch_lookup(&ref, repo, info->branch.c_str(), GIT_BRANCH_LOCAL);
 	if (ret == GIT_ENOTFOUND)
 		return { git_save_preflight_status::allowed, std::string() };
 	if (ret)
@@ -1354,6 +1358,14 @@ int git_save_dives(struct git_info *info, bool select_only)
 	if (!open_git_repository(info))
 		return report_error(translate("gettextFromC", "Failed to save dives to %s[%s] (%s)"), info->url.c_str(), info->branch.c_str(), strerror(errno));
 
+	// AI-generated (Claude): A missing cache may have been populated from an existing remote. Inspect
+	// that branch before allowing the save to replace its newly fetched tree.
+	preflight = preflight_git_save(info);
+	if (preflight.status == git_save_preflight_status::replacement_confirmation_required)
+		return report_error("%s", translate("gettextFromC", "Saving would replace existing git storage data; explicit confirmation is required"));
+	if (preflight.status != git_save_preflight_status::allowed)
+		return report_error(translate("gettextFromC", "Unable to inspect git storage destination (%s)"), preflight.error.c_str());
+
 	return do_git_save(info, select_only, false);
 }
 
@@ -1363,7 +1375,8 @@ int git_save_dives(struct git_info *info, bool select_only)
 int git_replace_dives(struct git_info *info)
 {
 	git_save_preflight_result preflight = preflight_git_save(info);
-	if (preflight.status == git_save_preflight_status::allowed)
+	if (preflight.status == git_save_preflight_status::allowed ||
+	    preflight.status == git_save_preflight_status::destination_missing)
 		return report_error("%s", translate("gettextFromC", "This destination does not require replacement; use the normal save operation"));
 	if (preflight.status == git_save_preflight_status::error)
 		return report_error(translate("gettextFromC", "Unable to inspect git storage destination (%s)"), preflight.error.c_str());

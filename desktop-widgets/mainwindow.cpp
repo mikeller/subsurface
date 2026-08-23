@@ -1285,8 +1285,13 @@ int MainWindow::file_save_as()
 	if (filename.isNull() || filename.isEmpty())
 		return report_error("No filename to save into");
 
-	if (save_dives(qPrintable(filename)))
+	git_info info;
+	if (is_git_repository(qPrintable(filename), &info)) {
+		if (!saveCloudFile(filename.toStdString()))
+			return -1;
+	} else if (save_dives(qPrintable(filename))) {
 		return -1;
+	}
 
 	setCurrentFile(filename.toStdString());
 	Command::setClean();

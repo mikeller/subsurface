@@ -1586,25 +1586,26 @@ void QMLManager::openNoCloudRepo()
 	openLocalThenRemote(filename);
 }
 
-// AI-generated (Claude): A cloud save is authorized only by provenance from the
-// currently loaded repository and branch, never by persistent application state.
-bool QMLManager::cloudDataIsBased() const
+// AI-generated (Claude): Authorize a save from matching provenance or when core
+// inspection proves that the destination cannot replace populated data.
+bool QMLManager::cloudDestinationIsSafe() const
 {
 	if (qPrefCloudStorage::cloud_verification_status() == qPrefCloudStorage::CS_NOCLOUD)
 		return true;
-	if (existing_filename.empty() || loaded_git_provenance.empty())
+	if (existing_filename.empty())
 		return false;
 
 	git_info info;
 	if (!is_git_repository(existing_filename.c_str(), &info))
 		return false;
-	return loaded_git_provenance.repository == canonical_git_repository(&info) &&
-	       loaded_git_provenance.branch == info.branch;
+	git_save_preflight_status status = preflight_git_save(&info).status;
+	return status == git_save_preflight_status::allowed ||
+	       status == git_save_preflight_status::destination_missing;
 }
 
 bool QMLManager::saveChangesLocal()
 {
-	if (!cloudDataIsBased()) {
+	if (!cloudDestinationIsSafe()) {
 		setNotificationText(tr("Cloud sync refused because this cloud log has not been loaded successfully. "
 				       "Open the cloud log before saving changes."));
 		appendTextToLog("Refusing to save cloud data without provenance for the current repository and branch.");

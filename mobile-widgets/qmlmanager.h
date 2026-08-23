@@ -286,7 +286,7 @@ private:
 	void mergeLocalRepo();
 	void openLocalThenRemote(QString url);
 	bool saveChangesLocal();
-	bool cloudDataIsBased() const;
+	bool cloudDestinationIsSafe() const;
 
 #if defined(Q_OS_ANDROID) || defined(Q_OS_IOS)
 	QString appLogFileName;

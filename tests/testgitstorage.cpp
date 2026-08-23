@@ -6,6 +6,7 @@
 #include "core/dive.h"
 #include "core/divelist.h"
 #include "core/divelog.h"
+#include "core/divesite.h"
 #include "core/errorhelper.h"
 #include "core/file.h"
 #include "core/subsurface-string.h"
@@ -25,8 +26,7 @@
 #endif
 #include <QTemporaryDir>
 
-// provide declarations for two local helper functions in git-access.c
-std::string get_local_dir(const std::string &remote, const std::string &branch);
+// provide a declaration for a local helper function in git-access.cpp
 void delete_remote_branch(git_repository *repo, const std::string &remote, const std::string &branch);
 
 Q_DECLARE_METATYPE(std::string);
@@ -451,7 +451,74 @@ void TestGitStorage::testGitSavePreflight()
 	QVERIFY(savePreflight(mainTarget).status == git_save_preflight_status::replacement_confirmation_required);
 
 	std::string invalidTarget = destinationDir.filePath("missing").toStdString() + "[main]";
-	QVERIFY(savePreflight(invalidTarget).status == git_save_preflight_status::error);
+	QVERIFY(savePreflight(invalidTarget).status == git_save_preflight_status::destination_missing);
+	QVERIFY(savePreflight(destination + "[invalid branch name]").status == git_save_preflight_status::error);
+
+	QTemporaryDir deletedCacheDir;
+	QVERIFY(deletedCacheDir.isValid());
+	std::string deletedCache = deletedCacheDir.path().toStdString();
+	std::string deletedCacheTarget = deletedCache + "[main]";
+	QCOMPARE(git_repository_init(&repo, deletedCache.c_str(), false), 0);
+	git_repository_free(repo);
+	QCOMPARE(save_dives(deletedCacheTarget.c_str()), 0);
+	clear_dive_file_data();
+	QCOMPARE(parse_file(deletedCacheTarget.c_str(), &divelog), 0);
+	QVERIFY(QDir(QString::fromStdString(deletedCache)).removeRecursively());
+	QVERIFY(savePreflight(deletedCacheTarget).status == git_save_preflight_status::allowed);
+
+	QTemporaryDir remoteFixture;
+	QVERIFY(remoteFixture.isValid());
+	clear_dive_file_data();
+	QCOMPARE(parse_file(SUBSURFACE_TEST_DATA "/dives/test10.xml", &divelog), 0);
+	std::string remote;
+	std::string cache;
+	QVERIFY(createReplacementRemote(remoteFixture.path(), remote, cache));
+	std::string remoteHead = branchHead(remote);
+	QVERIFY(QDir(QString::fromStdString(cache)).removeRecursively());
+	clear_dive_file_data();
+	QCOMPARE(parse_file(SUBSURFACE_TEST_DATA "/dives/SampleDivesV2.ssrf", &divelog), 0);
+	git_info missingCacheInfo;
+	setReplacementInfo(missingCacheInfo, remote, cache);
+	QVERIFY(preflight_git_save(&missingCacheInfo).status == git_save_preflight_status::destination_missing);
+	QVERIFY(git_save_dives(&missingCacheInfo, false) != 0);
+	QCOMPARE(branchHead(remote), remoteHead);
+}
+
+// AI-generated (Claude): Empty sites referenced by dives must survive git
+// serialization, while genuinely unused empty sites remain omitted.
+void TestGitStorage::testGitStorageReferencedEmptyDiveSite()
+{
+	QTemporaryDir destinationDir;
+	QVERIFY(destinationDir.isValid());
+	std::string destination = destinationDir.path().toStdString();
+	std::string target = destination + "[main]";
+	git_repository *repo = nullptr;
+	QCOMPARE(git_repository_init(&repo, destination.c_str(), false), 0);
+	git_repository_free(repo);
+	QCOMPARE(parse_file(SUBSURFACE_TEST_DATA "/dives/test10.xml", &divelog), 0);
+	QVERIFY(!divelog.dives.empty());
+
+	dive_site *referenced = divelog.dives.front()->dive_site;
+	QVERIFY(referenced);
+	referenced->name.clear();
+	referenced->description.clear();
+	referenced->notes.clear();
+	referenced->location = {};
+	referenced->taxonomy.clear();
+	uint32_t referencedUuid = referenced->uuid;
+	dive_site *unreferenced = divelog.sites.create(std::string());
+	uint32_t unreferencedUuid = unreferenced->uuid;
+	QCOMPARE(save_dives(target.c_str()), 0);
+
+	clear_dive_file_data();
+	QCOMPARE(parse_file(target.c_str(), &divelog), 0);
+	QVERIFY(!divelog.dives.empty());
+	QVERIFY(divelog.dives.front()->dive_site);
+	QCOMPARE(divelog.dives.front()->dive_site->uuid, referencedUuid);
+	bool foundUnreferenced = false;
+	for (const auto &site: divelog.sites)
+		foundUnreferenced |= site->uuid == unreferencedUuid;
+	QVERIFY(!foundUnreferenced);
 }
 
 // AI-generated (Claude): Verify a complete replacement writes the current log,
