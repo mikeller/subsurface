@@ -331,9 +331,6 @@ QMLManager::QMLManager() :
 	progress_callback = &progressCallback;
 	set_git_update_cb(&gitProgressCB);
 
-	// present dive site lists sorted by name
-	locationModel.sort(LocationInformationModel::NAME);
-
 	// Let's set some defaults to be copied so users don't necessarily need
 	// to know how to configure this
 	m_pasteDiveSite = false;
@@ -440,7 +437,13 @@ void QMLManager::openLocalThenRemote(QString url)
 			qPrefCloudStorage::set_cloud_verification_status(qPrefCloudStorage::CS_VERIFIED);
 			emit passwordStateChanged();
 		}
-		qPrefUnits::set_unit_system(git_prefs.unit_system);
+		/* Only apply the unit system from git_prefs when the loaded file
+		 * actually contained a "units" line.  If the file had no units
+		 * line, git_prefs.unit_system holds its default value (METRIC)
+		 * and applying it would silently clobber the preference already
+		 * loaded from Qt/Android settings by qPref::load() at startup. */
+		if (git_prefs_units_set)
+			qPrefUnits::set_unit_system(git_prefs.unit_system);
 		qPrefTechnicalDetails::set_tankbar(git_prefs.tankbar);
 		qPrefTechnicalDetails::set_show_ccr_setpoint(git_prefs.show_ccr_setpoint);
 		qPrefTechnicalDetails::set_show_ccr_sensors(git_prefs.show_ccr_sensors);
@@ -906,12 +909,17 @@ void QMLManager::revertToNoCloudIfNeeded()
 
 void QMLManager::consumeFinishedLoad()
 {
-	prefs.unit_system = git_prefs.unit_system;
-	if (git_prefs.unit_system == IMPERIAL)
-		git_prefs.units = IMPERIAL_units;
-	else if (git_prefs.unit_system == METRIC)
-		git_prefs.units = SI_units;
-	prefs.units = git_prefs.units;
+	/* Only apply unit system when the loaded file contained a "units" line.
+	 * Without this guard, git_prefs.unit_system defaults to METRIC and would
+	 * clobber the correct preference already loaded from Qt/Android settings. */
+	if (git_prefs_units_set) {
+		prefs.unit_system = git_prefs.unit_system;
+		if (git_prefs.unit_system == IMPERIAL)
+			git_prefs.units = IMPERIAL_units;
+		else if (git_prefs.unit_system == METRIC)
+			git_prefs.units = SI_units;
+		prefs.units = git_prefs.units;
+	}
 	prefs.tankbar = git_prefs.tankbar;
 	prefs.show_ccr_setpoint = git_prefs.show_ccr_setpoint;
 	prefs.show_ccr_sensors = git_prefs.show_ccr_sensors;
@@ -1129,18 +1137,19 @@ bool QMLManager::checkLocation(DiveSiteChange &res, struct dive *d, QString loca
 bool QMLManager::checkDuration(struct dive *d, QString duration)
 {
 	if (formatDiveDuration(d) != duration) {
+		// AI-generated (Claude): Reject incomplete input rather than interpreting missing fields as zero.
 		int h = 0, m = 0, s = 0;
-		QRegularExpression r1(QStringLiteral("(\\d*)\\s*%1[\\s,:]*(\\d*)\\s*%2[\\s,:]*(\\d*)\\s*%3").arg(tr("h")).arg(tr("min")).arg(tr("sec")), QRegularExpression::CaseInsensitiveOption);
+		QRegularExpression r1(QStringLiteral("^(\\d+)\\s*%1[\\s,:]*(\\d+)\\s*%2[\\s,:]*(\\d+)\\s*%3$").arg(QRegularExpression::escape(tr("h"))).arg(QRegularExpression::escape(tr("min"))).arg(QRegularExpression::escape(tr("sec"))), QRegularExpression::CaseInsensitiveOption);
 		QRegularExpressionMatch m1 = r1.match(duration);
-		QRegularExpression r2(QStringLiteral("(\\d*)\\s*%1[\\s,:]*(\\d*)\\s*%2").arg(tr("h")).arg(tr("min")), QRegularExpression::CaseInsensitiveOption);
+		QRegularExpression r2(QStringLiteral("^(\\d+)\\s*%1[\\s,:]*(\\d+)\\s*%2$").arg(QRegularExpression::escape(tr("h"))).arg(QRegularExpression::escape(tr("min"))), QRegularExpression::CaseInsensitiveOption);
 		QRegularExpressionMatch m2 = r2.match(duration);
-		QRegularExpression r3(QStringLiteral("(\\d*)\\s*%1").arg(tr("min")), QRegularExpression::CaseInsensitiveOption);
+		QRegularExpression r3(QStringLiteral("^(\\d+)\\s*%1$").arg(QRegularExpression::escape(tr("min"))), QRegularExpression::CaseInsensitiveOption);
 		QRegularExpressionMatch m3 = r3.match(duration);
-		QRegularExpression r4(QStringLiteral("(\\d*):(\\d*):(\\d*)"));
+		QRegularExpression r4(QStringLiteral("^(\\d+):(\\d{1,2}):(\\d{1,2})$"));
 		QRegularExpressionMatch m4 = r4.match(duration);
-		QRegularExpression r5(QStringLiteral("(\\d*):(\\d*)"));
+		QRegularExpression r5(QStringLiteral("^(\\d+):(\\d{2})\\s*(?:%1)?$").arg(QRegularExpression::escape(tr("h"))), QRegularExpression::CaseInsensitiveOption);
 		QRegularExpressionMatch m5 = r5.match(duration);
-		QRegularExpression r6(QStringLiteral("(\\d*)"));
+		QRegularExpression r6(QStringLiteral("^(\\d+)$"));
 		QRegularExpressionMatch m6 = r6.match(duration);
 		if (m1.hasMatch()) {
 			h = m1.captured(1).toInt();
@@ -1160,7 +1169,11 @@ bool QMLManager::checkDuration(struct dive *d, QString duration)
 			m = m5.captured(2).toInt();
 		} else if (m6.hasMatch()) {
 			m = m6.captured(1).toInt();
+		} else {
+			return false;
 		}
+		if ((m >= 60 && (m4.hasMatch() || m5.hasMatch())) || s >= 60)
+			return false;
 		d->dcs[0].duration = d->duration = duration_t { .seconds = h * 3600 + m * 60 + s };
 		if (is_dc_manually_added_dive(&d->dcs[0]))
 			d->dcs[0].samples.clear();
