@@ -44,6 +44,7 @@
 #include "core/sample.h"
 #include "core/selection.h"
 #include "core/save-profiledata.h"
+#include "core/settings/qPrefLanguage.h"
 #include "core/settings/qPrefLog.h"
 #include "core/settings/qPrefTechnicalDetails.h"
 #include "core/settings/qPrefPartialPressureGas.h"
@@ -969,7 +970,7 @@ bool QMLManager::checkDate(struct dive *d, QString date)
 		// what a pain - Qt will not parse dates if the day of the week is incorrect
 		// so if the user changed the date but didn't update the day of the week (most likely behavior, actually),
 		// we need to make sure we don't try to parse that
-		QString format = QString::fromStdString(prefs.date_format_short + ' ' + prefs.time_format);
+		QString format = qPrefLanguage::effectiveDateFormatShort() + ' ' + qPrefLanguage::effectiveTimeFormat();
 		if (format.contains(QLatin1String("ddd")) || format.contains(QLatin1String("dddd"))) {
 			QString dateFormatToDrop = format.contains(QLatin1String("ddd")) ? QStringLiteral("ddd") : QStringLiteral("dddd");
 			QDateTime ts;

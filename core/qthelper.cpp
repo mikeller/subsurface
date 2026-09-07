@@ -620,14 +620,14 @@ QString get_short_dive_date_string(timestamp_t when)
 {
 	QDateTime ts;
 	ts.setMSecsSinceEpoch(when * 1000L);
-	return loc.toString(ts.toUTC(), QString::fromStdString(prefs.date_format_short + " " + prefs.time_format));
+	return loc.toString(ts.toUTC(), qPrefLanguage::effectiveDateFormatShort() + ' ' + qPrefLanguage::effectiveTimeFormat());
 }
 
 static QString get_dive_only_date_string(timestamp_t when)
 {
 	QDateTime ts;
 	ts.setMSecsSinceEpoch(when * 1000L);
-	return loc.toString(ts.toUTC(), QString::fromStdString(prefs.date_format));
+	return loc.toString(ts.toUTC(), qPrefLanguage::effectiveDateFormat());
 }
 
 QString get_first_dive_date_string()
@@ -647,7 +647,7 @@ std::string get_current_date()
 	QDateTime ts(QDateTime::currentDateTime());;
 	QString current_date;
 
-	current_date = loc.toString(ts, QString::fromStdString(prefs.date_format_short));
+	current_date = loc.toString(ts, qPrefLanguage::effectiveDateFormatShort());
 
 	return current_date.toStdString();
 }

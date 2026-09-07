@@ -54,9 +54,11 @@ void PreferencesLanguage::refreshSettings()
 	ui->languageSystemDefault->setChecked(prefs.locale.use_system_language);
 	ui->timeFormatSystemDefault->setChecked(!prefs.time_format_override);
 	ui->dateFormatSystemDefault->setChecked(!prefs.date_format_override);
-	ui->timeFormatEntry->setCurrentText(QString::fromStdString(prefs.time_format));
-	ui->dateFormatEntry->setCurrentText(QString::fromStdString(prefs.date_format));
-	ui->shortDateFormatEntry->setText(QString::fromStdString(prefs.date_format_short));
+	// Show the effective (resolved) format so the user sees what is actually used,
+	// including the system-locale default when no override is set.
+	ui->timeFormatEntry->setCurrentText(qPrefLanguage::effectiveTimeFormat());
+	ui->dateFormatEntry->setCurrentText(qPrefLanguage::effectiveDateFormat());
+	ui->shortDateFormatEntry->setText(qPrefLanguage::effectiveDateFormatShort());
 	QAbstractItemModel *m = ui->languageDropdown->model();
 	QModelIndexList languages = m->match(m->index(0, 0), Qt::UserRole, QString::fromStdString(prefs.locale.lang_locale).replace("-", "_"));
 	if (languages.count())

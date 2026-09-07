@@ -7,6 +7,7 @@
 #include "statsview.h"
 #include "zvalues.h"
 #include "core/pref.h"
+#include "core/settings/qPrefLanguage.h"
 #include "core/subsurface-time.h"
 #include <math.h> // for lrint
 #include <numeric>
@@ -572,7 +573,10 @@ static void inc(std::array<int, 3> &ymd)
 // the separator character. Returns a (day_first, separator) pair.
 static std::pair<bool, char> day_format()
 {
-	const char *fmt = prefs.date_format.c_str();
+	// AI-generated (Claude): use effectiveDateFormat() so the system-default
+	// (empty prefs.date_format) produces a valid pattern rather than an empty string.
+	const std::string fmtStr = qPrefLanguage::effectiveDateFormat().toStdString();
+	const char *fmt = fmtStr.c_str();
 	const char *d, *m, *sep;
 	for (d = fmt; *d && *d != 'd' && *d != 'D'; ++d)
 		;

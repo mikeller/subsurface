@@ -2,6 +2,7 @@
 #include "filterconstraintwidget.h"
 #include "starwidget.h"
 #include "core/pref.h"
+#include "core/settings/qPrefLanguage.h"
 #include "core/subsurface-qt/divelistnotifier.h"
 #include "qt-models/cleanertablemodel.h" // for trashIcon()
 #include "qt-models/filterconstraintmodel.h"
@@ -291,13 +292,13 @@ void FilterConstraintWidget::update()
 {
 	// The user might have changed the date and/or time format. Let's update the widgets.
 	if (dateFrom)
-		dateFrom->setDisplayFormat(QString::fromStdString(prefs.date_format));
+		dateFrom->setDisplayFormat(qPrefLanguage::effectiveDateFormat());
 	if (dateTo)
-		dateTo->setDisplayFormat(QString::fromStdString(prefs.date_format));
+		dateTo->setDisplayFormat(qPrefLanguage::effectiveDateFormat());
 	if (timeFrom)
-		timeFrom->setDisplayFormat(QString::fromStdString(prefs.time_format));
+		timeFrom->setDisplayFormat(qPrefLanguage::effectiveTimeFormat());
 	if (timeTo)
-		timeTo->setDisplayFormat(QString::fromStdString(prefs.time_format));
+		timeTo->setDisplayFormat(qPrefLanguage::effectiveTimeFormat());
 
 	QModelIndex idx = model->index(row, 0);
 	setIndex(negate.get(), idx, FilterConstraintModel::NEGATE_INDEX_ROLE);

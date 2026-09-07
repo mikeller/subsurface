@@ -324,7 +324,7 @@ QString formatTripTitle(const dive_trip &trip)
 
 	QString prefix = !trip.location.empty() ? QString::fromStdString(trip.location) + ", " : QString();
 	if (getday)
-		return prefix + loc.toString(localTime, QString::fromStdString(prefs.date_format));
+		return prefix + loc.toString(localTime, qPrefLanguage::effectiveDateFormat());
 	else
 		return prefix + loc.toString(localTime, "MMM yyyy");
 }
@@ -567,7 +567,7 @@ QString get_dive_date_string(timestamp_t when)
 {
 	QDateTime ts;
 	ts.setMSecsSinceEpoch(when * 1000L);
-	return loc.toString(ts.toUTC(), QString::fromStdString(prefs.date_format + " " + prefs.time_format));
+	return loc.toString(ts.toUTC(), qPrefLanguage::effectiveDateFormat() + ' ' + qPrefLanguage::effectiveTimeFormat());
 }
 
 QString format_timezone_offset(int seconds)

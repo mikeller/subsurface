@@ -7,6 +7,7 @@
 #include "core/units.h"
 #include "core/selection.h"
 #include "core/settings/qPrefDivePlanner.h"
+#include "core/settings/qPrefLanguage.h"
 #include "core/subsurface-qt/divelistnotifier.h"
 #include "core/gettextfromc.h"
 #include "backend-shared/plannershared.h"
@@ -201,8 +202,8 @@ void DivePlannerWidget::settingsChanged()
 	ui.atmHeight->setValue((int) get_depth_units(pressure_to_altitude(DivePlannerPointsModel::instance()->getSurfacePressure()), NULL, NULL));
 	ui.atmHeight->blockSignals(false);
 
-	ui.dateEdit->setDisplayFormat(QString::fromStdString(prefs.date_format));
-	ui.startTime->setDisplayFormat(QString::fromStdString(prefs.time_format));
+	ui.dateEdit->setDisplayFormat(qPrefLanguage::effectiveDateFormat());
+	ui.startTime->setDisplayFormat(qPrefLanguage::effectiveTimeFormat());
 }
 
 void DivePlannerWidget::atmPressureChanged(int pressure_in_mbar)

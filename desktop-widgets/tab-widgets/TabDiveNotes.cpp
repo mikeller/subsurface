@@ -4,6 +4,7 @@
 #include "core/divesite.h"
 #include "core/qthelper.h"
 #include "core/pref.h"
+#include "core/settings/qPrefLanguage.h"
 #include "core/selection.h"
 #include "core/subsurface-string.h"
 #include "core/string-format.h"
@@ -94,8 +95,8 @@ TabDiveNotes::TabDiveNotes(MainTab *parent) : TabBase(parent),
 
 void TabDiveNotes::updateDateTimeFields()
 {
-	ui.dateEdit->setDisplayFormat(QString::fromStdString(prefs.date_format));
-	ui.timeEdit->setDisplayFormat(QString::fromStdString(prefs.time_format));
+	ui.dateEdit->setDisplayFormat(qPrefLanguage::effectiveDateFormat());
+	ui.timeEdit->setDisplayFormat(qPrefLanguage::effectiveTimeFormat());
 }
 
 void TabDiveNotes::closeWarning()
