@@ -8,7 +8,7 @@ Atomic Aquatics: Cobalt, Cobalt 2
 Beuchat: Mundial 2, Mundial 3, Voyager 2G
 Citizen: Hyper Aqualand
 Cochran: Commander I, Commander II, Commander TM, EMC-14, EMC-16, EMC-20H
-Cressi: Archimede, Cartesio, Donatello, Drake, Edy, Giotto, Goa, Leonardo, Leonardo 2.0, Michelangelo, Neon, Nepto, Newton
+Cressi: Archimede, Cartesio, Donatello, Drake, Edy, Giotto, Goa, Leonardo, Leonardo 2.0, Michelangelo, Neon, Nepto, Newton, Raffaello
 Crest: CR-4
 Deep Six: Excursion
 Deepblu: Cosmiq+
