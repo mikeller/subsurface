@@ -260,7 +260,34 @@ if(NOT ANDROID AND NOT CMAKE_SYSTEM_NAME STREQUAL "iOS" AND NOT SUBSURFACE_TARGE
 			set(LIBRAW_FOUND TRUE)
 			LIST(APPEND SUBSURFACE_LINK_LIBRARIES libraw::raw_r)
 		endif()
-		# libmtp is not available via vcpkg, skip for now
+		set(LIBMTP_FOUND FALSE)
+ 		unset(LIBMTP_LIBRARIES)
+
+		find_path(LIBMTP_INCLUDE_DIR libmtp.h
+			PATHS "${_VCPKG_PREFIX}/include"
+			NO_DEFAULT_PATH)
+		find_library(LIBMTP_LIBRARY_RELEASE
+			NAMES libmtp mtp
+			PATHS "${_VCPKG_PREFIX}/lib"
+			NO_DEFAULT_PATH)
+		find_library(LIBMTP_LIBRARY_DEBUG
+			NAMES libmtp mtp
+			PATHS "${_VCPKG_PREFIX}/debug/lib"
+			NO_DEFAULT_PATH)
+		if(LIBMTP_INCLUDE_DIR AND (LIBMTP_LIBRARY_RELEASE OR LIBMTP_LIBRARY_DEBUG))
+			set(LIBMTP_FOUND TRUE)
+			unset(LIBMTP_LIBRARIES)
+			if(LIBMTP_LIBRARY_RELEASE AND LIBMTP_LIBRARY_DEBUG)
+				list(APPEND LIBMTP_LIBRARIES optimized "${LIBMTP_LIBRARY_RELEASE}" debug "${LIBMTP_LIBRARY_DEBUG}")
+			elseif(LIBMTP_LIBRARY_RELEASE)
+				list(APPEND LIBMTP_LIBRARIES "${LIBMTP_LIBRARY_RELEASE}")
+			else()
+				list(APPEND LIBMTP_LIBRARIES "${LIBMTP_LIBRARY_DEBUG}")
+			endif()
+			list(APPEND LIBMTP_LIBRARIES ole32 portabledeviceguids propsys)
+			include_directories(${LIBMTP_INCLUDE_DIR})
+			message(STATUS "libmtp found: ${LIBMTP_LIBRARIES}")
+		endif()
 	else()
 		pkg_config_library(LIBUSB libusb-1.0 QUIET)
 		pkg_config_library(LIBMTP libmtp QUIET)
@@ -277,6 +304,13 @@ include_directories(.
 # decide what to do about Qt
 # this is messy because we want to support older Qt5 versions, newer Qt5 versions,
 # and Qt6 when enabled / available.
+#
+# The mobile QML UI (mobile-widgets/qml) already uses a Qt6-only Kirigami version
+# so mobile builds always need Qt6 - select it automatically instead of requiring
+# the user to also pass -DBUILD_WITH_QT6=ON.
+if(SUBSURFACE_TARGET_EXECUTABLE MATCHES "MobileExecutable")
+	set(BUILD_WITH_QT6 ON)
+endif()
 if(BUILD_WITH_QT6)
 	set(CHECK_QT6 "Qt6")
 endif()
@@ -384,6 +418,26 @@ if (SUBSURFACE_TARGET_EXECUTABLE MATCHES "DesktopExecutable")
 		endif()
 	endif()
 elseif (SUBSURFACE_TARGET_EXECUTABLE MATCHES "MobileExecutable")
+	# Qt6 is selected automatically above; this only catches the case where
+	# Qt6 itself isn't installed and find_package() fell back to Qt5.
+	if(NOT USINGQT6)
+		message(FATAL_ERROR "Building Subsurface-mobile requires Qt6, but only Qt5 was found.")
+	endif()
+	# The Kirigami version we use requires Qt 6.8.0, and the edge-to-edge handling
+	# that we need on Android devices (but not on iOS / desktop) relies on SafeArea.margins,
+	# which only exists from Qt 6.9 onward - so for Android Qt 6.9.0 is our real floor.
+	# Enforce it here so the failure is reported against Subsurface's own configure step \
+	# instead of failing confusingly later.
+	if(QT_VERSION VERSION_LESS 6.8.0)
+		message(FATAL_ERROR "Building Subsurface-mobile requires Qt 6.8.0 or newer, found ${QT_VERSION}.")
+	endif()
+	if(ANDROID AND QT_VERSION VERSION_LESS 6.9.0)
+		message(FATAL_ERROR "Building Subsurface-mobile for Android requires Qt 6.9.0 or newer, found ${QT_VERSION}.")
+	endif()
+	if(NOT (ANDROID OR CMAKE_SYSTEM_NAME STREQUAL "iOS"))
+		# add definition to seperate mobile for devices and for desktop
+		add_definitions(-DSUBSURFACE_MOBILE_DESKTOP)
+	endif()
 	if(APPLE)
 		set(SUBSURFACE_TARGET Subsurface-mobile)
 	else()
@@ -392,9 +446,6 @@ elseif (SUBSURFACE_TARGET_EXECUTABLE MATCHES "MobileExecutable")
 	list(APPEND QT_EXTRA_COMPONENTS QuickControls2)
 	list(APPEND QT_EXTRA_COMPONENTS QuickWidgets)
 	add_definitions(-DSUBSURFACE_MOBILE)
-
-	# add definition to seperate mobile for devices and for desktop
-	add_definitions(-DSUBSURFACE_MOBILE_DESKTOP)
 
 	message(STATUS "Building Subsurface-mobile requires BT support")
 	set(BTSUPPORT ON)

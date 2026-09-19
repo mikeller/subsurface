@@ -245,20 +245,22 @@ QString formatDiveGPS(const dive *d)
 QString formatDiveDate(const dive *d)
 {
 	QDateTime localTime = timestampToDateTime(d->when);
-	return localTime.date().toString(QString::fromStdString(prefs.date_format_short));
+	return QLocale().toString(localTime.date(), QString::fromStdString(prefs.date_format_short));
 }
 
 QString formatDiveTime(const dive *d)
 {
 	QDateTime localTime = timestampToDateTime(d->when);
-	return localTime.time().toString(QString::fromStdString(prefs.time_format));
+	return QLocale().toString(localTime.time(), QString::fromStdString(prefs.time_format));
 }
 
 QString formatDiveDateTime(const dive *d)
 {
 	QDateTime localTime = timestampToDateTime(d->when);
-	return QStringLiteral("%1 %2").arg(localTime.date().toString(QString::fromStdString(prefs.date_format_short)),
-					   localTime.time().toString(QString::fromStdString(prefs.time_format)));
+	const QLocale locale;
+	return QStringLiteral("%1 %2").arg(
+		locale.toString(localTime.date(), QString::fromStdString(prefs.date_format_short)),
+		locale.toString(localTime.time(), QString::fromStdString(prefs.time_format)));
 }
 
 QString formatDiveGasString(const dive *d)
