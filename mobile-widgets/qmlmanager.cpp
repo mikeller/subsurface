@@ -15,6 +15,7 @@
 #include <QtConcurrent>
 #include <QFuture>
 #include <QUndoStack>
+#include <limits>
 
 #include <QBluetoothLocalDevice>
 #if QT_VERSION >= QT_VERSION_CHECK(6, 5, 0)
@@ -2455,7 +2456,7 @@ void QMLManager::importCacheRepo(QString repo)
 
 // AI-generated (Claude)
 // Starts the "Load from file" file selection. On Android and iOS this will
-// start the native file picker, implemented by follow-up tickets; both are
+// start the native file picker, implemented by platform-specific code; both are
 // expected to copy the user's selection into a file inside the app's own
 // storage (so that it survives the picker returning asynchronously) and then
 // hand it to importDivesFromFile() - see that function's contract below.
@@ -2465,10 +2466,10 @@ void QMLManager::importCacheRepo(QString repo)
 void QMLManager::loadDivesFromFile()
 {
 #if defined(Q_OS_ANDROID)
-	// AI-generated (Claude): placeholder - implemented by a follow-up ticket.
+	// AI-generated (Claude): placeholder - implemented by platform-specific code.
 	appendTextToLog("loadDivesFromFile: Android file picker not implemented yet");
 #elif defined(Q_OS_IOS)
-	// AI-generated (Claude): placeholder - implemented by a follow-up ticket.
+	// AI-generated (Claude): placeholder - implemented by platform-specific code.
 	appendTextToLog("loadDivesFromFile: iOS file picker not implemented yet");
 #else
 	appendTextToLog("loadDivesFromFile: use the file dialog on this platform");
@@ -2485,8 +2486,7 @@ void QMLManager::loadDivesFromFile()
 // already merges duplicates by timestamp, so re-importing a file that was
 // already imported adds nothing new.
 //
-// Threading contract for callers (this is the piece the Android/iOS tickets
-// need): this function touches divelog, the dive-list models and the undo
+// Threading contract for callers: this function touches divelog, the dive-list models and the undo
 // stack, and therefore MUST run on the Qt main thread. The native pickers
 // on Android and iOS deliver their result asynchronously and are not
 // guaranteed to call back on the main thread, so they MUST invoke this with:
@@ -2531,7 +2531,7 @@ void QMLManager::importDivesFromFile(const QString &path, bool removeSource)
 		return;
 	}
 
-	int numDives = static_cast<int>(log.dives.size());
+	size_t numDivesBefore = divelog.dives.size();
 	bool imported = Command::importDives(&log, import_flags::merge_all_trips, localPath);
 	// persist right away: like the dive-computer download flow, the app could
 	// get killed once it's in the background and the freshly imported dives
@@ -2546,6 +2546,10 @@ void QMLManager::importDivesFromFile(const QString &path, bool removeSource)
 		return;
 	}
 
+	size_t numDivesAfter = divelog.dives.size();
+	size_t numDivesAdded = numDivesAfter > numDivesBefore ? numDivesAfter - numDivesBefore : 0;
+	Q_ASSERT(numDivesAdded <= static_cast<size_t>(std::numeric_limits<int>::max()));
+	int numDives = static_cast<int>(numDivesAdded);
 	QString message = tr("Imported %n dive(s) from file", "", numDives);
 	appendTextToLog(QString("importDivesFromFile: imported %1 dive(s) from %2").arg(numDives).arg(localPath));
 	emit importFinished(true, numDives, message);
