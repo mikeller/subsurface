@@ -5,7 +5,7 @@ import QtQuick.Controls.Material
 import QtQuick.Window
 import QtQuick.Dialogs
 import QtQuick.Layouts
-import QtCore
+import QtCore as QtCore
 import org.subsurfacedivelog.mobile 1.0
 import org.kde.kirigami as Kirigami
 import QtQuick.Templates as QtQuickTemplates
@@ -773,7 +773,9 @@ if you have network connectivity and want to sync your data to cloud storage."),
 	FileDialog {
 		id: loadDivesDialog
 		title: qsTr("Load dives from file")
-		currentFolder: StandardPaths.writableLocation(StandardPaths.DocumentsLocation)
+		// AI-generated (Claude): qualify QtCore to avoid resolving the local
+		// Settings.qml component as the QtCore Settings type during startup.
+		currentFolder: QtCore.StandardPaths.writableLocation(QtCore.StandardPaths.DocumentsLocation)
 		fileMode: FileDialog.OpenFile
 		nameFilters: [qsTr("Subsurface XML files") + " (*.ssrf *.xml)", qsTr("All files") + " (*)"]
 		onAccepted: {
