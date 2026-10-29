@@ -185,10 +185,18 @@ enum class merge_into_result {
 // replacement is observable to the undo stack despite leaving the log unchanged.
 static bool same_persistent_dive(const struct dive &a, const struct dive &b)
 {
+	// These values are calculated while processing the imported dive and are
+	// not part of the stored dive data. They must not cause an otherwise
+	// identical import to replace a dive.
+	dive a_copy = a;
+	dive b_copy = b;
+	a_copy.sac = a_copy.otu = a_copy.maxcns = 0;
+	b_copy.sac = b_copy.otu = b_copy.maxcns = 0;
+
 	membuffer a_buffer;
 	membuffer b_buffer;
-	save_one_dive_to_mb(&a_buffer, a, false);
-	save_one_dive_to_mb(&b_buffer, b, false);
+	save_one_dive_to_mb(&a_buffer, a_copy, false);
+	save_one_dive_to_mb(&b_buffer, b_copy, false);
 	return a_buffer.len == b_buffer.len &&
 	       std::memcmp(a_buffer.buffer, b_buffer.buffer, a_buffer.len) == 0;
 }
@@ -203,7 +211,6 @@ static merge_into_result try_to_merge_into(struct dive &dive_to_add, struct dive
 
 	if (same_persistent_dive(*old_dive, *merged))
 		return merge_into_result::unchanged;
-
 	merged->divetrip = old_dive->divetrip;
 	range_insert_sorted(dives_to_remove, old_dive, comp_dives_ptr);
 	dives_to_add.put(std::move(merged));
