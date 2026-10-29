@@ -2532,11 +2532,13 @@ void QMLManager::importDivesFromFile(const QString &path, bool removeSource)
 	}
 
 	int numDives = static_cast<int>(log.dives.size());
+	int undoIndex = Command::getUndoStack()->index();
 	Command::importDives(&log, import_flags::merge_all_trips, localPath);
 	// persist right away: like the dive-computer download flow, the app could
 	// get killed once it's in the background and the freshly imported dives
 	// would otherwise be lost
-	changesNeedSaving();
+	if (Command::getUndoStack()->index() != undoIndex)
+		changesNeedSaving();
 
 	QString message = tr("Imported %n dive(s) from file", "", numDives);
 	appendTextToLog(QString("importDivesFromFile: imported %1 dive(s) from %2").arg(numDives).arg(localPath));
